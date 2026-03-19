@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: Workflow
+metadata:
+  id: workflow-test
+  name: 工作流测试
+  version: 1.0.0
+steps:
+  - id: wf-step1
+    name: 工作流步骤 1
+    skill: test-skill
+  - id: wf-step2
+    name: 工作流步骤 2
+    skill: test-skill
+    dependsOn:
+      - wf-step1

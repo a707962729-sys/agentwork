@@ -1,0 +1,82 @@
+# 开发流程工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: dev-pipeline
+  name: "开发流程"
+  description: "从需求到交付的完整开发流程"
+  version: "1.0.0"
+  author: agentwork
+  tags: [dev, coding, ci]
+
+inputs:
+  requirement:
+    type: string
+    required: true
+    description: "需求描述"
+  repo:
+    type: string
+    required: true
+    description: "代码仓库地址"
+
+steps:
+  - id: analyze
+    name: "需求分析"
+    skill: requirement-analysis
+    agent: architect
+    input:
+      requirement: "${inputs.requirement}"
+    checkpoint:
+      validate: "output.features.length >= 1"
+
+  - id: design
+    name: "架构设计"
+    skill: architecture-design
+    agent: architect
+    dependsOn: [analyze]
+    input:
+      requirement: "${inputs.requirement}"
+      analysis: "${steps.analyze.output}"
+
+  - id: implement
+    name: "代码实现"
+    skill: code-gen
+    agent: developer
+    dependsOn: [design]
+    input:
+      design: "${steps.design.output}"
+      repo: "${inputs.repo}"
+    checkpoint:
+      validate: "output.files.length >= 1"
+
+  - id: review
+    name: "代码审查"
+    skill: code-review
+    agent: reviewer
+    dependsOn: [implement]
+    checkpoint:
+      requireApproval: true
+      onReject:
+        goto: implement
+
+  - id: test
+    name: "测试验证"
+    skill: test-gen
+    agent: qa
+    dependsOn: [implement]
+    checkpoint:
+      validate: "output.passed == true"
+
+  - id: deploy
+    name: "部署发布"
+    skill: deploy
+    agent: devops
+    dependsOn: [review, test]
+    checkpoint:
+      requireApproval: true
+
+outputs:
+  prUrl: "${steps.deploy.output.prUrl}"
+  deployUrl: "${steps.deploy.output.url}"

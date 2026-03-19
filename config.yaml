@@ -1,0 +1,36 @@
+# AgentWork 配置文件
+
+# 平台设置
+platform:
+  name: "AgentWork"
+  version: "1.0.0"
+
+# 路径配置
+paths:
+  workspace: "~/.agentwork"
+  skills: "~/.agentwork/skills"
+  workflows: "~/.agentwork/workflows"
+  agents: "~/.agentwork/agents"
+  memory: "~/.agentwork/memory"
+  data: "~/.agentwork/data"
+
+# 数据库配置
+database:
+  type: "sqlite"
+  path: "~/.agentwork/data/agentwork.db"
+
+# 模型配置
+model:
+  default: "qwen-cn/qwen3.5-plus"
+  
+# 执行配置
+execution:
+  mode: "sequential"  # sequential | parallel
+  checkpointEnabled: true
+  maxRetries: 3
+  timeout: 3600  # 秒
+
+# 日志配置
+logging:
+  level: "info"
+  file: "~/.agentwork/logs/agentwork.log"

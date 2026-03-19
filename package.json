@@ -1,0 +1,43 @@
+{
+  "name": "agentwork",
+  "version": "1.0.0",
+  "description": "一人公司自动化平台 - 基于 OpenClaw",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "plugin",
+    "skills",
+    "openclaw.plugin.json",
+    "tsconfig.json"
+  ],
+  "openclaw": {
+    "extensions": [
+      "./plugin/index.ts"
+    ]
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "cli": "node dist/cli.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "commander": "^12.0.0",
+    "uuid": "^9.0.0",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/node": "^20.11.0",
+    "@types/uuid": "^9.0.0",
+    "@vitest/coverage-v8": "^1.6.1",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

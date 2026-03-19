@@ -1,0 +1,104 @@
+# 内容发布工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: content-publish
+  name: "内容发布流程"
+  description: "从选题到发布的完整内容创作流程"
+  version: "1.0.0"
+  author: agentwork
+  tags: [content, publishing, wechat]
+
+# 触发方式
+triggers:
+  - type: manual
+  - type: schedule
+    cron: "0 9 * * *"
+
+# 输入参数
+inputs:
+  topic:
+    type: string
+    required: true
+    description: "文章主题"
+  style:
+    type: string
+    default: "专业"
+    enum: ["专业", "轻松", "幽默"]
+  auto_publish:
+    type: boolean
+    default: false
+
+# 执行步骤
+steps:
+  - id: research
+    name: "资料调研"
+    skill: web-search
+    input:
+      query: "${inputs.topic} 最新趋势"
+    checkpoint:
+      validate: "output.results.length >= 1"
+      onError: retry
+      maxRetries: 2
+
+  - id: outline
+    name: "大纲设计"
+    skill: article-outline
+    agent: content-writer
+    dependsOn: [research]
+    input:
+      topic: "${inputs.topic}"
+      context: "${steps.research.output}"
+    checkpoint:
+      validate: "output.sections.length >= 3"
+
+  - id: writing
+    name: "正文撰写"
+    skill: article-writing
+    agent: content-writer
+    dependsOn: [outline]
+    input:
+      topic: "${inputs.topic}"
+      style: "${inputs.style}"
+      outline: "${steps.outline.output}"
+    checkpoint:
+      validate: "output.wordCount >= 500"
+      onError: retry
+
+  - id: review
+    name: "内容审核"
+    skill: content-review
+    agent: reviewer
+    dependsOn: [writing]
+    checkpoint:
+      requireApproval: true
+      onReject:
+        goto: writing
+        message: "请根据审核意见修改"
+
+  - id: cover
+    name: "生成封面"
+    skill: image-gen
+    agent: image-generator
+    input:
+      prompt: "文章封面：${inputs.topic}"
+    # 无依赖，可与 writing 并行
+
+  - id: publish
+    name: "发布内容"
+    skill: wechat-publish
+    agent: publisher
+    dependsOn: [review, cover]
+    input:
+      article: "${steps.writing.output}"
+      cover: "${steps.cover.output}"
+      auto_publish: "${inputs.auto_publish}"
+    checkpoint:
+      validate: "output.success == true"
+
+# 输出
+outputs:
+  articleUrl: "${steps.publish.output.url}"
+  previewUrl: "${steps.publish.output.previewUrl}"

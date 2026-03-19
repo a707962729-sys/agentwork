@@ -1,0 +1,21 @@
+{
+  "id": "agentwork",
+  "name": "AgentWork - 一人公司自动化平台",
+  "description": "基于 OpenClaw 的任务编排平台",
+  "version": "1.0.0",
+  "skills": ["skills/task-decompose", "skills/article-writing", "skills/web-search"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "workspace": {
+        "type": "string",
+        "description": "AgentWork workspace directory path"
+      },
+      "defaultModel": {
+        "type": "string",
+        "description": "Default AI model to use for tasks"
+      }
+    }
+  }
+}

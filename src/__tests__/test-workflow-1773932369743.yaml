@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Workflow
+metadata:
+  id: test-workflow
+  name: 测试工作流
+  version: 1.0.0
+steps:
+  - id: step1
+    name: 第一步
+    skill: test-skill
+    checkpoint:
+      requireApproval: true
+      onReject:
+        goto: step2
