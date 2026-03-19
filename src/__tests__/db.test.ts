@@ -2,7 +2,7 @@
  * 数据库测试
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import { DatabaseManager } from '../db/index.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';

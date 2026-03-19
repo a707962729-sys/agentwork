@@ -17,15 +17,15 @@ export class MemoryManagerImpl implements MemoryManager {
   private memorySearch: MemorySearch;
   private config: MemoryStoreConfig;
 
-  constructor(config?: Partial<MemoryStoreConfig>) {
+  constructor(config?: Partial<MemoryStoreConfig>, openaiApiKey?: string) {
     this.config = {
       dbPath: config?.dbPath || '~/.agentwork/data/memory.db',
       enableVectorSearch: config?.enableVectorSearch ?? false,
-      vectorDimensions: config?.vectorDimensions ?? 384
+      vectorDimensions: config?.vectorDimensions ?? 1536
     };
 
-    this.memoryStore = new MemoryStore(this.config);
-    this.memorySearch = new MemorySearch(this.memoryStore);
+    this.memoryStore = new MemoryStore(this.config, openaiApiKey);
+    this.memorySearch = new MemorySearch(this.memoryStore, this.config.enableVectorSearch, openaiApiKey);
   }
 
   /**
@@ -214,9 +214,9 @@ let defaultInstance: MemoryManagerImpl | null = null;
 /**
  * 获取记忆管理器实例
  */
-export async function getMemoryManager(config?: Partial<MemoryStoreConfig>): Promise<MemoryManagerImpl> {
+export async function getMemoryManager(config?: Partial<MemoryStoreConfig>, openaiApiKey?: string): Promise<MemoryManagerImpl> {
   if (!defaultInstance) {
-    defaultInstance = new MemoryManagerImpl(config);
+    defaultInstance = new MemoryManagerImpl(config, openaiApiKey);
   }
   return defaultInstance;
 }

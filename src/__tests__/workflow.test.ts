@@ -2,7 +2,7 @@
  * 工作流引擎测试
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import { WorkflowEngine } from '../workflow/engine.js';
 import { DatabaseManager } from '../db/index.js';
 import { SkillsRegistry } from '../skills/index.js';
@@ -243,7 +243,7 @@ steps:
       // 使用反射调用私有方法（测试用）
       const sortedSteps = (engine as any).topologicalSort(steps);
       
-      const stepOrder = sortedSteps.map(s => s.id);
+      const stepOrder = sortedSteps.map((s: any) => s.id);
       // step1 应该在 step2 之前，step2 应该在 step3 之前
       expect(stepOrder.indexOf('step1')).toBeLessThan(stepOrder.indexOf('step2'));
       expect(stepOrder.indexOf('step2')).toBeLessThan(stepOrder.indexOf('step3'));
@@ -437,7 +437,8 @@ steps:
         runFromDb.steps[0].checkpointResult = {
           requireApproval: true,
           passed: false,
-          approved: false
+          approved: false,
+          validatedAt: new Date()
         };
         db.updateWorkflowRun(run.id, { steps: runFromDb.steps });
       }
@@ -485,7 +486,8 @@ steps:
         runFromDb.steps[0].checkpointResult = {
           requireApproval: true,
           passed: false,
-          approved: false
+          approved: false,
+          validatedAt: new Date()
         };
         db.updateWorkflowRun(run.id, { steps: runFromDb.steps });
       }

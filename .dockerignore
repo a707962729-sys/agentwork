@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node modules
+node_modules
+npm-debug.log
+
+# 测试和覆盖率
+coverage
+*.test.ts
+*.test.js
+vitest.config.ts
+
+# 文档
+*.md
+!README.md
+
+# 开发配置
+.env
+.env.*
+tsconfig.json
+.editorconfig
+.eslintrc*
+.prettierrc*
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+
+# 日志
+logs
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# 临时文件
+tmp
+temp
+.cache

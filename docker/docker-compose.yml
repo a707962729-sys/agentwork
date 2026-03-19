@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # AgentWork 主服务
+  agentwork:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: agentwork-dev
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+      - CONFIG_PATH=/app/config.yaml
+    volumes:
+      # 挂载数据目录
+      - agentwork-data:/app/data
+      # 挂载日志目录
+      - agentwork-logs:/app/logs
+      # 挂载配置 (可选，用于开发时热更新)
+      - ../config.yaml:/app/config.yaml:ro
+    networks:
+      - agentwork-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('healthy')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis 服务 (可选，用于缓存和队列)
+  redis:
+    image: redis:7-alpine
+    container_name: agentwork-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - agentwork-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  agentwork-data:
+    driver: local
+  agentwork-logs:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  agentwork-network:
+    driver: bridge

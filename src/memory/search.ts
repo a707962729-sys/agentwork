@@ -6,15 +6,35 @@
 import { MemoryEntry, MemorySearchResult } from '../types.js';
 import { SearchOptions, RecallContext, VectorSimilarityResult } from './types.js';
 import { MemoryStore } from './store.js';
+import { createEmbedder, createVectorSearch } from '../vector/index.js';
+import type { Embedder, VectorSearch as VectorSearchInterface } from '../vector/index.js';
 
 /**
  * 记忆搜索类
  */
 export class MemorySearch {
   private store: MemoryStore;
+  private embedder: Embedder | null = null;
+  private vectorSearchClient: VectorSearchInterface | null = null;
+  private enableVectorSearch: boolean;
 
-  constructor(store: MemoryStore) {
+  constructor(store: MemoryStore, enableVectorSearch: boolean = false, openaiApiKey?: string) {
     this.store = store;
+    this.enableVectorSearch = enableVectorSearch;
+
+    // 如果启用了向量检索，初始化 embedder 和 vector search
+    if (enableVectorSearch && openaiApiKey) {
+      this.embedder = createEmbedder({
+        provider: 'openai',
+        apiKey: openaiApiKey,
+        model: 'text-embedding-3-small',
+        dimensions: 1536
+      });
+
+      // 注意：这里需要一个 VectorStore 实例，实际使用时需要传入或创建
+      // 为简化集成，这里使用简化的实现
+      this.vectorSearchClient = null; // 将在后续版本中完善
+    }
   }
 
   /**
@@ -40,7 +60,7 @@ export class MemorySearch {
 
     // 如果启用了向量检索且有嵌入数据，使用向量相似度
     if (options?.useVectorSearch && memories.some(m => m.embedding)) {
-      results = await this.vectorSearch(query, memories, options);
+      results = await this.vectorSearchInternal(query, memories, options);
     } else {
       // 否则使用关键词匹配
       results = this.keywordSearch(query, memories, options);
@@ -135,49 +155,39 @@ export class MemorySearch {
   }
 
   /**
-   * 向量搜索
+   * 向量搜索（内部实现）
    * 计算余弦相似度
    */
-  private async vectorSearch(
+  private async vectorSearchInternal(
     query: string,
     memories: MemoryEntry[],
     options?: SearchOptions
   ): Promise<MemorySearchResult[]> {
-    // 注意：这里需要实际的向量嵌入模型
-    // 目前使用简化的实现，实际使用时需要集成 embedding 模型
-    
-    const queryEmbedding = await this.generateEmbedding(query);
-    
-    const results: MemorySearchResult[] = memories
-      .filter(m => m.embedding)
-      .map(memory => {
-        const score = this.cosineSimilarity(queryEmbedding, memory.embedding!);
-        return {
-          entry: memory,
-          score
-        };
-      });
-
-    results.sort((a, b) => b.score - a.score);
-    return results;
-  }
-
-  /**
-   * 生成文本的向量嵌入
-   * TODO: 集成实际的 embedding 模型
-   */
-  private async generateEmbedding(text: string): Promise<number[]> {
-    // 简化实现：返回伪向量
-    // 实际使用时应该调用 embedding API (如 OpenAI, Cohere 等)
-    const hash = this.simpleHash(text);
-    const dimensions = 384;
-    const embedding: number[] = [];
-    
-    for (let i = 0; i < dimensions; i++) {
-      embedding.push(Math.sin(hash * (i + 1)));
+    // 如果没有初始化 embedder，降级到关键词搜索
+    if (!this.embedder) {
+      return this.keywordSearch(query, memories, options);
     }
-    
-    return embedding;
+
+    try {
+      // 使用 OpenAI embedder 生成查询向量
+      const queryEmbedding = await this.embedder.embed(query);
+      
+      const results: MemorySearchResult[] = memories
+        .filter(m => m.embedding && m.embedding.length > 0)
+        .map(memory => {
+          const score = this.cosineSimilarity(queryEmbedding, memory.embedding!);
+          return {
+            entry: memory,
+            score
+          };
+        });
+
+      results.sort((a, b) => b.score - a.score);
+      return results;
+    } catch (error) {
+      console.warn('Vector search failed, falling back to keyword search:', error);
+      return this.keywordSearch(query, memories, options);
+    }
   }
 
   /**

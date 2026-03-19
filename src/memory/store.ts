@@ -9,6 +9,8 @@ import { expandHome, ensureDir } from '../utils.js';
 import { MemoryLevel, MemoryEntry } from '../types.js';
 import { MemoryStoreConfig, StoreOptions } from './types.js';
 import * as path from 'path';
+import { createEmbedder, VectorStore } from '../vector/index.js';
+import type { Embedder } from '../vector/index.js';
 
 /**
  * 记忆存储类
@@ -16,12 +18,14 @@ import * as path from 'path';
 export class MemoryStore {
   private db: Database.Database;
   private config: MemoryStoreConfig;
+  private embedder: Embedder | null = null;
+  private vectorStore: VectorStore | null = null;
 
-  constructor(config: MemoryStoreConfig) {
+  constructor(config: MemoryStoreConfig, openaiApiKey?: string) {
     this.config = {
       dbPath: config.dbPath,
       enableVectorSearch: config.enableVectorSearch ?? false,
-      vectorDimensions: config.vectorDimensions ?? 384
+      vectorDimensions: config.vectorDimensions ?? 1536
     };
 
     // 确保目录存在
@@ -34,6 +38,23 @@ export class MemoryStore {
     
     // 创建表
     this.initializeSchema();
+
+    // 如果启用了向量检索，初始化 embedder 和 vector store
+    if (this.config.enableVectorSearch && openaiApiKey) {
+      this.embedder = createEmbedder({
+        provider: 'openai',
+        apiKey: openaiApiKey,
+        model: 'text-embedding-3-small',
+        dimensions: this.config.vectorDimensions
+      });
+
+      // 使用独立的向量数据库
+      const vectorDbPath = this.config.dbPath.replace('.db', '-vectors.db');
+      this.vectorStore = new VectorStore({
+        dbPath: vectorDbPath,
+        dimensions: this.config.vectorDimensions ?? 1536
+      });
+    }
   }
 
   /**
@@ -68,6 +89,16 @@ export class MemoryStore {
     const id = uuidv4();
     const createdAt = Date.now();
 
+    // 如果启用了向量检索且没有提供 embedding，自动生成
+    let embedding = options?.embedding;
+    if (this.config.enableVectorSearch && this.embedder && !embedding) {
+      try {
+        embedding = await this.embedder.embed(content);
+      } catch (error) {
+        console.warn('Failed to generate embedding:', error);
+      }
+    }
+
     const stmt = this.db.prepare(`
       INSERT INTO memories (id, level, project_id, task_id, session_id, content, metadata, embedding, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -81,9 +112,27 @@ export class MemoryStore {
       options?.sessionId || null,
       content,
       options?.metadata ? JSON.stringify(options.metadata) : null,
-      options?.embedding ? JSON.stringify(options.embedding) : null,
+      embedding ? JSON.stringify(embedding) : null,
       createdAt
     );
+
+    // 如果启用了向量存储，同时存储到向量索引
+    if (this.vectorStore && embedding) {
+      try {
+        await this.vectorStore.add(content, embedding, {
+          metadata: {
+            ...options?.metadata,
+            memoryId: id,
+            level,
+            projectId: options?.projectId,
+            taskId: options?.taskId,
+            sessionId: options?.sessionId
+          }
+        });
+      } catch (error) {
+        console.warn('Failed to store vector:', error);
+      }
+    }
 
     return {
       id,
@@ -92,7 +141,7 @@ export class MemoryStore {
       taskId: options?.taskId,
       content,
       metadata: options?.metadata,
-      embedding: options?.embedding,
+      embedding,
       createdAt: new Date(createdAt)
     };
   }
@@ -221,5 +270,8 @@ export class MemoryStore {
    */
   close(): void {
     this.db.close();
+    if (this.vectorStore) {
+      this.vectorStore.close();
+    }
   }
 }

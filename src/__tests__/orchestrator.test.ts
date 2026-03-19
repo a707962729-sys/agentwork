@@ -2,7 +2,7 @@
  * 任务编排器测试
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import { TaskOrchestrator } from '../orchestrator/index.js';
 import { WorkflowEngine } from '../workflow/engine.js';
 import { SkillsRegistry } from '../skills/index.js';

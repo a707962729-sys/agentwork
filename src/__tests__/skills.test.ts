@@ -2,7 +2,7 @@
  * 技能注册中心测试
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import { SkillsRegistry } from '../skills/index.js';
 import { DatabaseManager } from '../db/index.js';
 import * as fs from 'fs/promises';

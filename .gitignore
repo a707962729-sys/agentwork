@@ -1,9 +1,31 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
+
+# Test temp directories
+src/__tests__/test-skills-*/
+
+# Database
+data/*.db
+data/*.db-journal
+
+# Logs
 *.log
+logs/
+
+# OS files
 .DS_Store
-.env
-*.db
-coverage/
+Thumbs.db
+
+# IDE
 .idea/
 .vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+.env.*.local

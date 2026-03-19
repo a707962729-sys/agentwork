@@ -221,6 +221,12 @@ export class DatabaseManager {
     }));
   }
 
+  deleteTask(id: string): boolean {
+    const stmt = this.db.prepare('DELETE FROM tasks WHERE id = ?');
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
   // ==================== 工作流操作 ====================
 
   saveWorkflow(workflow: WorkflowDefinition): void {

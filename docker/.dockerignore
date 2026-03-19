@@ -1,0 +1,73 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node modules (会在容器内重新安装)
+node_modules
+npm-debug.log
+
+# 构建输出 (应该已经构建好)
+# 如果需要容器内构建，取消注释
+# dist
+# *.ts
+# *.js.map
+
+# 测试和覆盖率
+coverage
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+test
+tests
+__tests__
+vitest.config.ts
+
+# 文档
+docs
+*.md
+!README.md
+INSTALL.md
+TEST_REPORT.md
+
+# 开发配置
+.env
+.env.*
+!.env.example
+tsconfig.json
+.editorconfig
+.eslintrc*
+.prettierrc*
+.stylelintrc*
+
+# IDE 和编辑器
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# 日志
+logs
+*.log
+
+# 临时文件
+tmp
+temp
+.cache
+
+# Docker 相关文件 (避免递归)
+docker-compose.override.yml
+docker-compose.dev.yml
+
+# 示例和测试数据
+examples
+data/*.db
+data/*.sqlite
+
+# 其他
+.openclaw
+workspace-*
