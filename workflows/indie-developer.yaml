@@ -1,0 +1,138 @@
+# 独立开发者工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: indie-developer
+  name: 独立开发者
+  description: SaaS 产品开发自动化流程
+  version: "1.0.0"
+  author: agentwork
+  tags: [development, saas, product]
+
+# 触发方式
+triggers:
+  - type: manual
+  - type: webhook
+    path: "/dev-pipeline"
+
+# 输入参数
+inputs:
+  product:
+    type: string
+    required: true
+    description: "产品名称"
+  features:
+    type: array
+    items:
+      type: string
+    required: true
+    description: "需要实现的功能列表"
+  techStack:
+    type: string
+    default: "nextjs-postgres-prisma"
+    description: "技术栈"
+
+# Agent 配置
+agents:
+  - id: architect
+    type: design
+    trigger: auto
+  - id: developer
+    type: coding
+    trigger: auto
+  - id: tester
+    type: testing
+    trigger: auto
+
+# 执行步骤
+steps:
+  - id: requirements-analysis
+    name: "需求分析"
+    skill: requirements-analyzer
+    agent: architect
+    input:
+      productName: "${inputs.product}"
+      features: "${inputs.features}"
+    checkpoint:
+      validate: "output.requirements.length >= 1"
+      onError: abort
+
+  - id: architecture-design
+    name: "架构设计"
+    skill: architecture-design
+    agent: architect
+    dependsOn: [requirements-analysis]
+    input:
+      productName: "${inputs.product}"
+      requirements: "${steps.requirements-analysis.output.requirements}"
+      techStack: "${inputs.techStack}"
+    checkpoint:
+      validate: "output.architectureDiagram != null"
+      onError: retry
+
+  - id: database-schema
+    name: "数据库设计"
+    skill: database-design
+    agent: architect
+    dependsOn: [architecture-design]
+    input:
+      requirements: "${steps.requirements-analysis.output.requirements}"
+      architecture: "${steps.architecture-design.output}"
+    checkpoint:
+      validate: "output.schema != null"
+
+  - id: coding
+    name: "代码开发"
+    skill: code-generator
+    agent: developer
+    dependsOn: [database-schema]
+    input:
+      productName: "${inputs.product}"
+      architecture: "${steps.architecture-design.output}"
+      schema: "${steps.database-schema.output}"
+      features: "${inputs.features}"
+    checkpoint:
+      validate: "output.files.length >= 1"
+      onError: retry
+      maxRetries: 3
+
+  - id: unit-tests
+    name: "单元测试"
+    skill: test-generator
+    agent: tester
+    dependsOn: [coding]
+    input:
+      files: "${steps.coding.output.files}"
+    checkpoint:
+      validate: "output.testCount >= 10"
+      onError: retry
+
+  - id: integration-tests
+    name: "集成测试"
+    skill: integration-test-generator
+    agent: tester
+    dependsOn: [coding]
+    input:
+      endpoints: "${steps.coding.output.endpoints}"
+    checkpoint:
+      validate: "output.testCount >= 5"
+      onError: retry
+
+  - id: deploy
+    name: "部署上线"
+    skill: deploy-provider
+    agent: developer
+    dependsOn: [unit-tests, integration-tests]
+    input:
+      files: "${steps.coding.output.files}"
+      architecture: "${steps.architecture-design.output}"
+    checkpoint:
+      validate: "output.url != null"
+
+# 输出
+outputs:
+  repositoryUrl: "${steps.coding.output.repositoryUrl}"
+  deploymentUrl: "${steps.deploy.output.url}"
+  documentationUrl: "${steps.deploy.output.docsUrl}"

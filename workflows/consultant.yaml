@@ -1,0 +1,158 @@
+# 知识付费/咨询工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: consultant
+  name: 知识付费/咨询
+  description: 在线课程/咨询服务自动化流程
+  version: "1.0.0"
+  author: agentwork
+  tags: [education, consulting, course]
+
+# 触发方式
+triggers:
+  - type: manual
+  - type: schedule
+    cron: "0 14 * * 1"
+
+# 输入参数
+inputs:
+  topic:
+    type: string
+    required: true
+    description: "课程主题"
+  duration:
+    type: string
+    default: "30分钟"
+    enum: ["15分钟", "30分钟", "1小时", "2小时"]
+  pricing:
+    type: number
+    default: 99
+    description: "价格"
+
+# Agent 配置
+agents:
+  - id: researcher
+    type: research
+    trigger: auto
+  - id: creator
+    type: content
+    trigger: auto
+  - id: teacher
+    type: teaching
+    trigger: auto
+
+# 执行步骤
+steps:
+  - id: topic-research
+    name: "市场调研"
+    skill: market-research
+    agent: researcher
+    input:
+      topic: "${inputs.topic}"
+    checkpoint:
+      validate: "output.searchVolume >= 1000"
+      onError: retry
+
+  - id: curriculum-design
+    name: "课程设计"
+    skill: curriculum-designer
+    agent: creator
+    dependsOn: [topic-research]
+    input:
+      topic: "${inputs.topic}"
+      duration: "${inputs.duration}"
+    checkpoint:
+      validate: "output.modules.length >= 3"
+      onError: retry
+
+  - id: content-writing
+    name: "内容撰写"
+    skill: article-writing
+    agent: creator
+    dependsOn: [curriculum-design]
+    input:
+      topic: "${inputs.topic}"
+      modules: "${steps.curriculum-design.output.modules}"
+    checkpoint:
+      validate: "output.totalWordCount >= 2000"
+      onError: retry
+
+  - id: slide-creation
+    name: "课件制作"
+    skill: slide-generator
+    agent: creator
+    dependsOn: [content-writing]
+    input:
+      content: "${steps.content-writing.output}"
+      modules: "${steps.curriculum-design.output.modules}"
+    checkpoint:
+      validate: "output.slides.length >= ${steps.curriculum-design.output.modules.length}"
+
+  - id: video-recording
+    name: "视频录制"
+    skill: video-recorder
+    agent: teacher
+    dependsOn: [slide-creation]
+    input:
+      slides: "${steps.slide-creation.output}"
+      script: "${steps.content-writing.output}"
+      duration: "${inputs.duration}"
+    checkpoint:
+      validate: "output.videoUrl != null"
+      onError: retry
+
+  - id: review
+    name: "内容审核"
+    skill: content-review
+    agent: reviewer
+    dependsOn: [video-recording]
+    checkpoint:
+      requireApproval: true
+      onReject:
+        goto: video-recording
+        message: "请根据审核意见修改"
+
+  - id: course-upload
+    name: "平台发布"
+    skill: course-uploader
+    agent: creator
+    dependsOn: [review]
+    input:
+      videoUrl: "${steps.video-recording.output.videoUrl}"
+      slides: "${steps.slide-creation.output}"
+      content: "${steps.content-writing.output}"
+      price: "${inputs.pricing}"
+      platform: "xxx"
+    checkpoint:
+      validate: "output.courseId != null"
+
+  - id: marketing
+    name: "课程推广"
+    skill: marketing-planner
+    agent: creator
+    dependsOn: [course-upload]
+    input:
+      courseId: "${steps.course-upload.output.courseId}"
+      topic: "${inputs.topic}"
+    checkpoint:
+      validate: "output.promotionPlan != null"
+
+  - id: student-support
+    name: "学员服务"
+    skill: student-support
+    agent: teacher
+    dependsOn: [course-upload]
+    input:
+      courseId: "${steps.course-upload.output.courseId}"
+    checkpoint:
+      validate: "output.supportChannels.length >= 2"
+
+# 输出
+outputs:
+  courseId: "${steps.course-upload.output.courseId}"
+  courseUrl: "${steps.course-upload.output.courseUrl}"
+  revenue: "${inputs.pricing}"
+  studentCount: "0"

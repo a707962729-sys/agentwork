@@ -21,11 +21,16 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest",
-    "cli": "node dist/cli.js"
+    "cli": "node dist/cli.js",
+    "api": "node start-api.mjs",
+    "start": "./start.sh",
+    "stop": "./stop.sh"
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
     "commander": "^12.0.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "uuid": "^9.0.0",
     "yaml": "^2.3.4"
   },

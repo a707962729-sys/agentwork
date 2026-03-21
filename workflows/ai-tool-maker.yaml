@@ -1,0 +1,159 @@
+# AI 工具开发者工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: ai-tool-maker
+  name: AI 工具开发者
+  description: AI 小工具开发自动化流程
+  version: "1.0.0"
+  author: agentwork
+  tags: [ai, tool, development]
+
+# 触发方式
+triggers:
+  - type: manual
+  - type: webhook
+    path: "/ai-tool-dev"
+
+# 输入参数
+inputs:
+  toolName:
+    type: string
+    required: true
+    description: "工具名称"
+  toolPurpose:
+    type: string
+    required: true
+    description: "工具用途"
+  targetPlatform:
+    type: string
+    default: "web"
+    enum: ["web", "cli", "desktop", "mobile"]
+
+# Agent 配置
+agents:
+  - id: researcher
+    type: research
+    trigger: auto
+  - id: developer
+    type: coding
+    trigger: auto
+  - id: marketer
+    type: marketing
+    trigger: auto
+
+# 执行步骤
+steps:
+  - id: idea-validation
+    name: "创意验证"
+    skill: idea-validator
+    agent: researcher
+    input:
+      toolName: "${inputs.toolName}"
+      purpose: "${inputs.toolPurpose}"
+    checkpoint:
+      validate: "output.marketPotential >= 5"
+      onError: retry
+
+  - id: technical-design
+    name: "技术设计"
+    skill: technical-designer
+    agent: developer
+    dependsOn: [idea-validation]
+    input:
+      toolName: "${inputs.toolName}"
+      purpose: "${inputs.toolPurpose}"
+      platform: "${inputs.targetPlatform}"
+    checkpoint:
+      validate: "output.designDoc != null"
+      onError: retry
+
+  - id: architecture-planning
+    name: "架构规划"
+    skill: architecture-planner
+    agent: developer
+    dependsOn: [technical-design]
+    input:
+      toolName: "${inputs.toolName}"
+      designDoc: "${steps.technical-design.output.designDoc}"
+    checkpoint:
+      validate: "output.architectureDiagram != null"
+
+  - id: coding
+    name: "代码开发"
+    skill: code-generator
+    agent: developer
+    dependsOn: [architecture-planning]
+    input:
+      toolName: "${inputs.toolName}"
+      architecture: "${steps.architecture-planning.output}"
+      platform: "${inputs.targetPlatform}"
+    checkpoint:
+      validate: "output.files.length >= 5"
+      onError: retry
+      maxRetries: 3
+
+  - id: testing
+    name: "测试"
+    skill: test-generator
+    agent: tester
+    dependsOn: [coding]
+    input:
+      files: "${steps.coding.output.files}"
+    checkpoint:
+      validate: "output.testCount >= 10"
+      onError: retry
+
+  - id: deployment
+    name: "部署"
+    skill: tool-deployer
+    agent: developer
+    dependsOn: [testing]
+    input:
+      files: "${steps.coding.output.files}"
+      platform: "${inputs.targetPlatform}"
+    checkpoint:
+      validate: "output.deploymentUrl != null"
+
+  - id: documentation
+    name: "文档撰写"
+    skill: docs-generator
+    agent: developer
+    dependsOn: [deployment]
+    input:
+      toolName: "${inputs.toolName}"
+      usage: "${steps.deployment.output.usageGuide}"
+    checkpoint:
+      validate: "output.readme != null"
+
+  - id: marketing
+    name: "推广"
+    skill: tool-marketer
+    agent: marketer
+    dependsOn: [deployment]
+    input:
+      toolName: "${inputs.toolName}"
+      toolPurpose: "${inputs.toolPurpose}"
+      deploymentUrl: "${steps.deployment.output.deploymentUrl}"
+    checkpoint:
+      validate: "output.promotionChannels.length >= 3"
+
+  - id: user-feedback
+    name: "用户反馈收集"
+    skill: feedback-collector
+    agent: marketer
+    dependsOn: [marketing]
+    input:
+      toolName: "${inputs.toolName}"
+    checkpoint:
+      validate: "output.feedbackCount >= 5"
+      onError: retry
+
+# 输出
+outputs:
+  toolUrl: "${steps.deployment.output.deploymentUrl}"
+  documentationUrl: "${steps.documentation.output.readmeUrl}"
+  githubUrl: "${steps.coding.output.githubUrl}"
+  downloads: "根据部署计算"

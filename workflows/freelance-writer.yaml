@@ -1,0 +1,124 @@
+# 自由撰稿人工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: freelance-writer
+  name: 自由撰稿人
+  description: 接稿写文章自动化流程
+  version: "1.0.0"
+  author: agentwork
+  tags: [writing, freelance, content]
+
+# 触发方式
+triggers:
+  - type: manual
+  - type: webhook
+    path: "/freelance-write"
+
+# 输入参数
+inputs:
+  topic:
+    type: string
+    required: true
+    description: "文章主题"
+  platform:
+    type: string
+    default: "public-account"
+    enum: ["public-account", "zhihu", "jianshu", "blog"]
+  wordCount:
+    type: number
+    default: 1000
+    description: "字数要求"
+
+# Agent 配置
+agents:
+  - id: researcher
+    type: research
+    trigger: auto
+  - id: writer
+    type: writing
+    trigger: auto
+
+# 执行步骤
+steps:
+  - id: order-receive
+    name: "接收订单"
+    skill: order-handler
+    agent: writer
+    input:
+      topic: "${inputs.topic}"
+      platform: "${inputs.platform}"
+      wordCount: "${inputs.wordCount}"
+    checkpoint:
+      validate: "output.orderId != null"
+
+  - id: background-research
+    name: "背景调研"
+    skill: web-search
+    agent: researcher
+    dependsOn: [order-receive]
+    input:
+      query: "${inputs.topic} 最新资讯 背景资料"
+    checkpoint:
+      validate: "output.results.length >= 5"
+      onError: retry
+
+  - id: outline-writing
+    name: "大纲撰写"
+    skill: article-outline
+    agent: writer
+    dependsOn: [background-research]
+    input:
+      topic: "${inputs.topic}"
+      platform: "${inputs.platform}"
+      context: "${steps.background-research.output}"
+    checkpoint:
+      validate: "output.sections.length >= 3"
+      onError: retry
+
+  - id: draft-writing
+    name: "初稿撰写"
+    skill: article-writing
+    agent: writer
+    dependsOn: [outline-writing]
+    input:
+      topic: "${inputs.topic}"
+      platform: "${inputs.platform}"
+      outline: "${steps.outline-writing.output}"
+      wordCount: "${inputs.wordCount}"
+    checkpoint:
+      validate: "output.wordCount >= ${inputs.wordCount}"
+      onError: retry
+      maxRetries: 2
+
+  - id: revise
+    name: "修改润色"
+    skill: article-reviser
+    agent: writer
+    dependsOn: [draft-writing]
+    input:
+      article: "${steps.draft-writing.output}"
+      platform: "${inputs.platform}"
+    checkpoint:
+      validate: "output.qualityScore >= 80"
+      onError: retry
+
+  - id: delivery
+    name: "交付作品"
+    skill: delivery-handler
+    agent: writer
+    dependsOn: [revise]
+    input:
+      article: "${steps.revise.output}"
+      orderId: "${steps.order-receive.output.orderId}"
+      platform: "${inputs.platform}"
+    checkpoint:
+      validate: "output.delivered == true"
+
+# 输出
+outputs:
+  article: "${steps.revise.output}"
+  deliveryUrl: "${steps.delivery.output.deliveryUrl}"
+  revenue: "计算价格"

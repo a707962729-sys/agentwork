@@ -1,0 +1,130 @@
+# 翻译服务工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: translation-service
+  name: 翻译服务
+  description: 翻译接单自动化流程
+  version: "1.0.0"
+  author: agentwork
+  tags: [translation, service, content]
+
+# 触发方式
+triggers:
+  - type: manual
+  - type: webhook
+    path: "/translation-service"
+
+# 输入参数
+inputs:
+  sourceLang:
+    type: string
+    required: true
+    description: "源语言"
+  targetLang:
+    type: string
+    required: true
+    description: "目标语言"
+  format:
+    type: string
+    required: true
+    enum: ["document", "text", "video", "audio"]
+  urgency:
+    type: string
+    default: "normal"
+    enum: ["normal", "urgent", "rush"]
+
+# Agent 配置
+agents:
+  - id: translator
+    type: translation
+    trigger: auto
+  - id: reviewer
+    type: review
+    trigger: auto
+
+# 执行步骤
+steps:
+  - id: file-receive
+    name: "接收文件"
+    skill: file-receiver
+    agent: translator
+    input:
+      format: "${inputs.format}"
+    checkpoint:
+      validate: "output.fileUploaded == true"
+      onError: retry
+
+  - id: translation
+    name: "翻译"
+    skill: translator
+    agent: translator
+    dependsOn: [file-receive]
+    input:
+      sourceLang: "${inputs.sourceLang}"
+      targetLang: "${inputs.targetLang}"
+      fileUrl: "${steps.file-receive.output.fileUrl}"
+      format: "${inputs.format}"
+      urgency: "${inputs.urgency}"
+    checkpoint:
+      validate: "output.translatedFileUrl != null"
+      onError: retry
+
+  - id: proofreading
+    name: "校对"
+    skill: proofreader
+    agent: reviewer
+    dependsOn: [translation]
+    input:
+      translatedFileUrl: "${steps.translation.output.translatedFileUrl}"
+      sourceLang: "${inputs.sourceLang}"
+      targetLang: "${inputs.targetLang}"
+    checkpoint:
+      requireApproval: true
+      onReject:
+        goto: translation
+        message: "请根据校对意见修改"
+
+  - id: quality-check
+    name: "质量检查"
+    skill: quality-checker
+    agent: reviewer
+    dependsOn: [proofreading]
+    input:
+      translatedFileUrl: "${steps.translation.output.translatedFileUrl}"
+      targetLang: "${inputs.targetLang}"
+    checkpoint:
+      validate: "output.qualityScore >= 80"
+      onError: retry
+
+  - id: delivery
+    name: "交付"
+    skill: delivery-handler
+    agent: translator
+    dependsOn: [quality-check]
+    input:
+      translatedFileUrl: "${steps.translation.output.translatedFileUrl}"
+      format: "${inputs.format}"
+      targetLang: "${inputs.targetLang}"
+    checkpoint:
+      validate: "output.delivered == true"
+
+  - id: feedback
+    name: "客户反馈"
+    skill: feedback-handler
+    agent: translator
+    dependsOn: [delivery]
+    input:
+      format: "${inputs.format}"
+    checkpoint:
+      validate: "output.feedbackReceived == true"
+      onError: retry
+
+# 输出
+outputs:
+  translatedFileUrl: "${steps.translation.output.translatedFileUrl}"
+  deliveryUrl: "${steps.delivery.output.deliveryUrl}"
+  translationTime: "${inputs.urgency}"
+  qualityScore: "${steps.quality-check.output.qualityScore}"

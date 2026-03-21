@@ -21,7 +21,7 @@ interface WorkflowCardProps {
   onDelete?: () => void
 }
 
-export default function WorkflowCard({ workflow, onExecute, onEdit, onDelete }: WorkflowCardProps) {
+export default function WorkflowCard({ workflow, onExecute, onEdit, onDelete, children }: WorkflowCardProps & { children?: React.ReactNode }) {
   return (
     <div className="p-4 bg-dark-card rounded-lg border border-dark-border hover:border-primary-500/50 transition-all animate-fade-in">
       <div className="flex items-start justify-between mb-3">
@@ -58,6 +58,9 @@ export default function WorkflowCard({ workflow, onExecute, onEdit, onDelete }: 
           )}
         </div>
       </div>
+
+      {/* 子内容 */}
+      {children}
 
       <div className="flex items-center gap-2">
         <button
