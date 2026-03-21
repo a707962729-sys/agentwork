@@ -1,0 +1,46 @@
+{
+  "name": "boss-resume",
+  "description": "Boss直聘简历搜索配置示例",
+  
+  "搜索参数示例": {
+    "keywords": "前端工程师 React",
+    "city": "上海",
+    "experience": "3-5年",
+    "salary": "15-25K",
+    "education": "本科",
+    "limit": 20,
+    "outputDir": "~/resumes/前端/"
+  },
+  
+  "城市列表": [
+    "北京", "上海", "广州", "深圳", "杭州",
+    "成都", "南京", "武汉", "西安", "重庆",
+    "苏州", "天津", "郑州", "长沙", "厦门"
+  ],
+  
+  "经验选项": [
+    "不限", "应届生", "1年以下", "1-3年",
+    "3-5年", "5-10年", "10年以上"
+  ],
+  
+  "学历选项": [
+    "不限", "大专", "本科", "硕士", "博士"
+  ],
+  
+  "使用说明": {
+    "步骤1": "登录Boss直聘并导出Cookie",
+    "步骤2": "保存Cookie到 ~/.agentwork/boss-cookies.json",
+    "步骤3": "调用技能进行搜索",
+    "步骤4": "简历自动导出到指定目录"
+  },
+  
+  "API调用示例": {
+    "keywords": "后端工程师 Go",
+    "city": "北京",
+    "experience": "5-10年",
+    "education": "硕士",
+    "limit": 10,
+    "outputDir": "~/resumes/后端/",
+    "cookieFile": "~/.agentwork/boss-cookies.json"
+  }
+}

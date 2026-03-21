@@ -1,5 +1,5 @@
 /**
- * 工作流引擎
+ * 工作流引擎 - 修复版本
  */
 
 import { parse as parseYaml } from 'yaml';
@@ -18,17 +18,20 @@ import { DatabaseManager } from '../db/index.js';
 import { expandHome, evaluateExpression, ensureDir } from '../utils.js';
 import { CheckpointManager } from './checkpoint.js';
 import { SkillsRegistry } from '../skills/index.js';
+import { AgentRunner } from '../agent-engine/AgentRunner.js';
 
 export class WorkflowEngine {
   private db: DatabaseManager;
   private checkpoint: CheckpointManager;
   private skills: SkillsRegistry;
+  private agentRunner: AgentRunner;
   private eventHandlers: Map<string, Set<EventHandler>> = new Map();
   private runningWorkflows: Map<string, Promise<void>> = new Map();
 
-  constructor(db: DatabaseManager, skills: SkillsRegistry) {
+  constructor(db: DatabaseManager, skills: SkillsRegistry, agentRunner?: AgentRunner) {
     this.db = db;
     this.skills = skills;
+    this.agentRunner = agentRunner || new AgentRunner(db);
     this.checkpoint = new CheckpointManager();
   }
 
@@ -148,9 +151,9 @@ export class WorkflowEngine {
   }
 
   /**
-   * 执行工作流运行
+   * 执行工作流运行 - 改为 public 以便 RecoveryManager 调用
    */
-  private async executeRun(runId: string, workflow: WorkflowDefinition, inputs: Record<string, any>): Promise<void> {
+  async executeRun(runId: string, workflow: WorkflowDefinition, inputs: Record<string, any>): Promise<void> {
     let run = this.db.getWorkflowRun(runId)!;
     run.status = 'running';
     run.startedAt = new Date();
@@ -250,8 +253,8 @@ export class WorkflowEngine {
         throw new Error(`Skill not found: ${step.skill}`);
       }
 
-      // 执行技能（这里简化处理，实际应该调用 Agent）
-      step.output = await this.executeSkill(skill, resolvedInput);
+      // 使用真正的 Agent 执行技能
+      step.output = await this.agentRunner.executeSkillWithRetry(skill, resolvedInput, context);
 
       // 检查点验证
       if (step.checkpoint) {
@@ -298,21 +301,6 @@ export class WorkflowEngine {
       this.emit({ type: 'step:failed', data: { runId, stepId: step.id, error: error.message }, timestamp: new Date() });
       throw error;
     }
-  }
-
-  /**
-   * 执行技能（简化版）
-   */
-  private async executeSkill(skill: any, input: Record<string, any>): Promise<any> {
-    // 这里应该调用 Agent 执行技能
-    // 简化处理，直接返回输入
-    return {
-      success: true,
-      skill: skill.manifest?.name || 'unknown',
-      input,
-      output: `Skill ${skill.manifest?.name} executed with input: ${JSON.stringify(input)}`,
-      timestamp: new Date().toISOString()
-    };
   }
 
   /**

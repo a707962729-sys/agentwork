@@ -12,24 +12,6 @@ export interface OpenAIConfig {
   organization?: string;
 }
 
-interface OpenAIResponse {
-  choices: Array<{
-    message: {
-      content: string;
-      tool_calls?: Array<{
-        id: string;
-        function: {
-          name: string;
-          arguments: string;
-        };
-      }>;
-    };
-  }>;
-  data?: Array<{
-    embedding: number[];
-  }>;
-}
-
 /**
  * OpenAI Provider 实现
  */
@@ -80,7 +62,7 @@ export class OpenAIProvider extends AIProvider {
       throw new Error(`OpenAI API error: ${response.status} ${error}`);
     }
 
-    const data = await response.json() as OpenAIResponse;
+    const data = await response.json() as { choices: { message: { content: string } }[] };
     return data.choices[0].message.content;
   }
 
@@ -112,7 +94,7 @@ export class OpenAIProvider extends AIProvider {
       throw new Error(`OpenAI API error: ${response.status} ${error}`);
     }
 
-    const data = await response.json() as OpenAIResponse;
+    const data = await response.json() as { choices: { message: { tool_calls: { id: string; function: { name: string; arguments: string } }[] } }[] };
     const choice = data.choices[0];
     
     if (!choice.message.tool_calls || choice.message.tool_calls.length === 0) {
@@ -148,7 +130,7 @@ export class OpenAIProvider extends AIProvider {
       throw new Error(`OpenAI API error: ${response.status} ${error}`);
     }
 
-    const data = await response.json() as OpenAIResponse;
-    return data.data![0].embedding;
+    const data = await response.json() as { data: { embedding: number[] }[] };
+    return data.data[0].embedding;
   }
 }

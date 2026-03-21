@@ -1,23 +1,32 @@
 /**
- * 任务编排器
+ * 任务编排器 - 整合 Agent 执行引擎、任务队列、崩溃恢复
  */
 
 import { Task, TaskStep, TaskType, TaskStatus, Event, EventHandler } from '../types.js';
 import { DatabaseManager } from '../db/index.js';
 import { WorkflowEngine } from '../workflow/engine.js';
 import { SkillsRegistry } from '../skills/index.js';
+import { AgentRunner } from '../agent-engine/index.js';
+import { QueueManager } from '../task-queue/index.js';
+import { RecoveryManager } from '../recovery/index.js';
 import { v4 as uuid } from 'uuid';
 
 export class TaskOrchestrator {
   private db: DatabaseManager;
   private workflowEngine: WorkflowEngine;
   private skills: SkillsRegistry;
+  private agentRunner: AgentRunner;
+  private queueManager: QueueManager;
+  private recoveryManager: RecoveryManager;
   private eventHandlers: Map<string, Set<EventHandler>> = new Map();
 
   constructor(db: DatabaseManager, workflowEngine: WorkflowEngine, skills: SkillsRegistry) {
     this.db = db;
     this.workflowEngine = workflowEngine;
     this.skills = skills;
+    this.agentRunner = new AgentRunner(db);
+    this.queueManager = new QueueManager(db);
+    this.recoveryManager = new RecoveryManager(db);
   }
 
   /**
@@ -148,6 +157,37 @@ export class TaskOrchestrator {
   }
 
   /**
+   * 将任务加入队列
+   */
+  enqueue(taskId: string, priority: 'high' | 'normal' | 'low' = 'normal'): void {
+    this.queueManager.enqueue(taskId, priority);
+  }
+
+  /**
+   * 从队列获取下一个任务并执行
+   */
+  async executeNext(): Promise<void> {
+    const item = this.queueManager.dequeue();
+    if (!item) return;
+    
+    await this.execute(item.taskId);
+  }
+
+  /**
+   * 恢复中断的任务
+   */
+  async recover(runId: string): Promise<void> {
+    const restored = this.recoveryManager.restoreState(runId);
+    if (!restored) {
+      throw new Error(`No recovery state found for run: ${runId}`);
+    }
+
+    // 从中断点继续执行
+    // 这里简化处理，实际应该根据 restored.currentIndex 继续
+    console.log(`Recovered run ${runId} at step index ${restored.currentIndex}`);
+  }
+
+  /**
    * 执行任务
    */
   async execute(taskId: string): Promise<void> {
@@ -179,11 +219,13 @@ export class TaskOrchestrator {
   }
 
   /**
-   * 执行步骤
+   * 执行步骤 - 使用 AgentRunner 真正执行
    */
   private async executeSteps(taskId: string): Promise<void> {
     const task = this.db.getTask(taskId);
     if (!task) return;
+
+    const runId = task.workflowRunId || taskId;
 
     for (const step of task.steps) {
       if (step.status !== 'pending') continue;
@@ -192,20 +234,37 @@ export class TaskOrchestrator {
       step.startedAt = new Date();
       this.db.updateTask(taskId, { steps: task.steps });
 
+      // 保存状态快照（崩溃恢复）
+      this.recoveryManager.saveSnapshot(runId, step.id, step);
+
       this.emit({ type: 'step:started', data: { taskId, stepId: step.id }, timestamp: new Date() });
 
       try {
         const skill = await this.skills.load(step.skill);
         if (skill) {
-          // 执行技能
-          step.output = { success: true, skill: skill.manifest.name };
+          // 🎯 真正执行技能 - 使用 AgentRunner
+          const result = await this.agentRunner.executeSkill(skill, step.input || {}, {
+            taskId,
+            stepId: step.id,
+            taskTitle: task.title,
+            taskDescription: task.description
+          });
+          
+          step.output = result;
           step.status = 'passed';
+          
+          // 保存成功状态快照
+          this.recoveryManager.saveSnapshot(runId, step.id, step);
         } else {
           throw new Error(`Skill not found: ${step.skill}`);
         }
       } catch (error: any) {
         step.status = 'failed';
         step.error = error.message;
+        
+        // 保存失败状态快照
+        this.recoveryManager.saveSnapshot(runId, step.id, step);
+        
         this.db.updateTask(taskId, { steps: task.steps, status: 'failed', error: error.message });
         this.emit({ type: 'step:failed', data: { taskId, stepId: step.id, error: error.message }, timestamp: new Date() });
         return;
@@ -219,6 +278,23 @@ export class TaskOrchestrator {
     // 完成
     this.db.updateTask(taskId, { status: 'completed', completedAt: new Date() });
     this.emit({ type: 'task:completed', data: { taskId }, timestamp: new Date() });
+    
+    // 清理恢复快照
+    this.recoveryManager.cleanupSnapshots(runId, 10);
+  }
+
+  /**
+   * 获取队列管理器
+   */
+  getQueueManager(): QueueManager {
+    return this.queueManager;
+  }
+
+  /**
+   * 获取恢复管理器
+   */
+  getRecoveryManager(): RecoveryManager {
+    return this.recoveryManager;
   }
 
   /**

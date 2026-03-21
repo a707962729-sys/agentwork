@@ -11,24 +11,6 @@ export interface QwenConfig {
   model?: string;
 }
 
-interface QwenResponse {
-  choices: Array<{
-    message: {
-      content: string;
-      tool_calls?: Array<{
-        id: string;
-        function: {
-          name: string;
-          arguments: string;
-        };
-      }>;
-    };
-  }>;
-  data?: Array<{
-    embedding: number[];
-  }>;
-}
-
 /**
  * Qwen Provider 实现
  */
@@ -75,7 +57,7 @@ export class QwenProvider extends AIProvider {
       throw new Error(`Qwen API error: ${response.status} ${error}`);
     }
 
-    const data = await response.json() as QwenResponse;
+    const data = await response.json() as { choices: { message: { content: string } }[] };
     return data.choices[0].message.content;
   }
 
@@ -107,7 +89,7 @@ export class QwenProvider extends AIProvider {
       throw new Error(`Qwen API error: ${response.status} ${error}`);
     }
 
-    const data = await response.json() as QwenResponse;
+    const data = await response.json() as { choices: { message: { tool_calls: { id: string; function: { name: string; arguments: string } }[] } }[] };
     const choice = data.choices[0];
     
     if (!choice.message.tool_calls || choice.message.tool_calls.length === 0) {
@@ -142,7 +124,7 @@ export class QwenProvider extends AIProvider {
       throw new Error(`Qwen API error: ${response.status} ${error}`);
     }
 
-    const data = await response.json() as QwenResponse;
-    return data.data![0].embedding;
+    const data = await response.json() as { data: { embedding: number[] }[] };
+    return data.data[0].embedding;
   }
 }

@@ -89,6 +89,28 @@ export class DatabaseManager {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // 创建任务队列表（P0阶段新增）
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS task_queue (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        priority TEXT DEFAULT 'normal',
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 创建状态快照表（崩溃恢复用，P0阶段新增）
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS state_snapshots (
+        id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        step_id TEXT NOT NULL,
+        state TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
   }
 
   // ==================== 任务操作 ====================
@@ -421,5 +443,33 @@ export class DatabaseManager {
 
   close(): void {
     this.db.close();
+  }
+
+  // ==================== 辅助方法 ====================
+
+  /**
+   * 执行 SQL 语句（INSERT, UPDATE, DELETE, CREATE 等）
+   */
+  exec(sql: string, params: any[] = []): void {
+    const stmt = this.db.prepare(sql);
+    stmt.run(...params);
+  }
+
+  /**
+   * 查询单行数据
+   */
+  queryOne<T>(sql: string, params: any[] = []): T | null {
+    const stmt = this.db.prepare(sql);
+    const row = stmt.get(...params) as T | undefined;
+    return row ?? null;
+  }
+
+  /**
+   * 查询多行数据
+   */
+  query<T>(sql: string, params: any[] = []): T[] {
+    const stmt = this.db.prepare(sql);
+    const rows = stmt.all(...params) as T[];
+    return rows;
   }
 }
