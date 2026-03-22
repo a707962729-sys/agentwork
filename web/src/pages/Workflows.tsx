@@ -40,7 +40,7 @@ export default function Workflows() {
     },
   })
 
-  const workflows = data?.workflows || []
+  const workflows = data?.data || []
 
   // 搜索和筛选
   const filteredWorkflows = workflows.filter((workflow: any) => {

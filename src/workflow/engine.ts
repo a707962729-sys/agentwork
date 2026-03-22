@@ -117,6 +117,8 @@ export class WorkflowEngine {
       steps
     });
 
+    console.log(`🚀 [Workflow] Starting workflow: ${workflowId}, runId: ${run.id}`);
+
     // 触发事件
     this.emit({ type: 'workflow:started', data: { runId: run.id, workflowId }, timestamp: new Date() });
 
@@ -125,8 +127,14 @@ export class WorkflowEngine {
     this.runningWorkflows.set(run.id, promise);
 
     promise
-      .then(() => this.runningWorkflows.delete(run.id))
-      .catch(() => this.runningWorkflows.delete(run.id));
+      .then(() => {
+        console.log(`✅ [Workflow] Completed: ${run.id}`);
+        this.runningWorkflows.delete(run.id);
+      })
+      .catch((err) => {
+        console.error(`❌ [Workflow] Failed: ${run.id}`, err.message);
+        this.runningWorkflows.delete(run.id);
+      });
 
     return run;
   }
@@ -232,6 +240,7 @@ export class WorkflowEngine {
     step.status = 'running';
     step.startedAt = new Date();
 
+    console.log(`  ▶️ [Step] Starting: ${step.id} - ${step.title}`);
     this.emit({ type: 'step:started', data: { runId, stepId: step.id, title: step.title }, timestamp: new Date() });
 
     try {
@@ -246,15 +255,19 @@ export class WorkflowEngine {
           }
         }
       }
+      console.log(`    📥 Input:`, JSON.stringify(resolvedInput, null, 2).slice(0, 200));
 
       // 获取技能
       const skill = await this.skills.load(step.skill);
       if (!skill) {
         throw new Error(`Skill not found: ${step.skill}`);
       }
+      console.log(`    🔧 Skill: ${skill.manifest.name}`);
 
       // 使用真正的 Agent 执行技能
+      console.log(`    🤖 Calling AI...`);
       step.output = await this.agentRunner.executeSkillWithRetry(skill, resolvedInput, context);
+      console.log(`    📤 Output:`, JSON.stringify(step.output).slice(0, 200));
 
       // 检查点验证
       if (step.checkpoint) {

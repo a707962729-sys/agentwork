@@ -8,29 +8,50 @@ platform:
 # 路径配置
 paths:
   workspace: "~/.agentwork"
-  skills: "~/.agentwork/skills"
-  workflows: "~/.agentwork/workflows"
-  agents: "~/.agentwork/agents"
+  skills: "./skills"
+  workflows: "./workflows"
+  agents: "./agents"
   memory: "~/.agentwork/memory"
-  data: "~/.agentwork/data"
+  data: "./data"
 
 # 数据库配置
 database:
   type: "sqlite"
-  path: "~/.agentwork/data/agentwork.db"
+  path: "./data/agentwork.db"
 
-# 模型配置
-model:
-  default: "qwen-cn/qwen3.5-plus"
+# AI 模型配置 - 独立运行使用
+ai:
+  # 默认使用的提供商
+  default: "ollama"
   
+  # API 提供商配置
+  providers:
+    # 本地模型（Ollama）- 优先使用
+    ollama:
+      api_base: "http://localhost:11434/v1"
+      model: "qwen2.5:7b"
+      api_key: "ollama"
+      
+    # 智谱 GLM
+    glm:
+      api_base: "https://open.bigmodel.cn/api/paas/v4"
+      model: "glm-5"
+      # api_key 从环境变量 ZHIPU_API_KEY 或 AI_API_KEY 读取
+      
+    # OpenAI 兼容接口
+    openai:
+      api_base: "${OPENAI_API_BASE:https://api.openai.com/v1}"
+      model: "gpt-4o-mini"
+      # api_key 从环境变量 OPENAI_API_KEY 读取
+
 # 执行配置
 execution:
-  mode: "sequential"  # sequential | parallel
+  mode: "sequential"
   checkpointEnabled: true
   maxRetries: 3
-  timeout: 3600  # 秒
+  timeout: 3600
 
 # 日志配置
 logging:
   level: "info"
-  file: "~/.agentwork/logs/agentwork.log"
+  file: "./logs/agentwork.log"

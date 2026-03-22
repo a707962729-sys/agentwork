@@ -2,13 +2,14 @@ import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { readdir } from 'fs/promises';
+import { readdir, readFile } from 'fs/promises';
+import * as yaml from 'yaml';
 
 // 数据库和引擎
 import { DatabaseManager } from '../db/index.js';
 import { WorkflowEngine } from '../workflow/engine.js';
 import { SkillsRegistry } from '../skills/index.js';
-import { AgentRunner } from '../agent-engine/index.js';
+import { AgentRunner, AgentRunnerConfig } from '../agent-engine/index.js';
 import { TaskOrchestrator } from '../orchestrator/index.js';
 
 // API 路由
@@ -25,16 +26,26 @@ export class APIServer {
   private db: DatabaseManager;
   private workflowEngine: WorkflowEngine;
   private skills: SkillsRegistry;
+  private agentRunner: AgentRunner;
   private orchestrator: TaskOrchestrator;
+  private initialized: boolean = false;
+  private config: any = {};
 
   constructor(port: number = 3000) {
     this.port = port;
     this.app = express();
 
+    // 加载配置文件
+    this.loadConfig();
+
     // 初始化数据库和引擎
     this.db = new DatabaseManager('data/agentwork.db');
     this.skills = new SkillsRegistry(this.db, './skills');
-    this.workflowEngine = new WorkflowEngine(this.db, this.skills);
+    
+    // 初始化 AgentRunner（独立 AI 调用）
+    this.agentRunner = new AgentRunner(this.db, this.getAIConfig());
+    
+    this.workflowEngine = new WorkflowEngine(this.db, this.skills, this.agentRunner);
     this.orchestrator = new TaskOrchestrator(this.db, this.workflowEngine, this.skills);
 
     // 配置中间件
@@ -45,6 +56,30 @@ export class APIServer {
 
     // 静态文件服务
     this.configureStatic();
+  }
+
+  /**
+   * 加载配置文件
+   */
+  private loadConfig(): void {
+    const configPath = path.join(__dirname, '..', '..', 'config.yaml');
+    try {
+      const content = require('fs').readFileSync(configPath, 'utf-8');
+      this.config = yaml.parse(content) || {};
+    } catch {
+      console.warn('⚠️ No config.yaml found, using defaults');
+    }
+  }
+
+  /**
+   * 获取 AI 配置
+   */
+  private getAIConfig(): AgentRunnerConfig {
+    const aiConfig = this.config.ai || {};
+    return {
+      defaultModel: aiConfig.default || process.env.AI_MODEL || 'glm-5',
+      providers: aiConfig.providers || {}
+    };
   }
 
   /**
@@ -132,6 +167,13 @@ export class APIServer {
   }
 
   public async start(): Promise<void> {
+    // 初始化技能注册表 - 加载所有技能到内存
+    if (!this.initialized) {
+      await this.skills.init();
+      this.initialized = true;
+      console.log(`🔧 Skills registry initialized: ${this.skills.list().length} skills loaded`);
+    }
+    
     // 加载工作流
     const workflowCount = await this.loadWorkflows();
     
