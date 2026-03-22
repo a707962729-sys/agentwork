@@ -266,8 +266,13 @@ export class WorkflowEngine {
 
       // 使用真正的 Agent 执行技能
       console.log(`    🤖 Calling AI...`);
-      step.output = await this.agentRunner.executeSkillWithRetry(skill, resolvedInput, context);
-      console.log(`    📤 Output:`, JSON.stringify(step.output).slice(0, 200));
+      try {
+        step.output = await this.agentRunner.executeSkillWithRetry(skill, resolvedInput, context);
+        console.log(`    📤 Output:`, JSON.stringify(step.output).slice(0, 200));
+      } catch (aiError: any) {
+        console.error(`    ❌ AI Error:`, aiError.message);
+        throw aiError;
+      }
 
       // 检查点验证
       if (step.checkpoint) {

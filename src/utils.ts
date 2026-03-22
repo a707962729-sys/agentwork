@@ -35,8 +35,48 @@ export function deepClone<T>(obj: T): T {
  * 表达式求值（简单版）
  */
 export function evaluateExpression(expr: string, context: Record<string, any>): any {
+  // 如果不是字符串，直接返回
+  if (typeof expr !== 'string') {
+    return expr;
+  }
+
+  // 检查是否包含表达式
+  const hasExpression = expr.includes('${');
+  if (!hasExpression) {
+    return expr;
+  }
+
   // 支持 ${inputs.xxx} 和 ${steps.xxx.output} 格式
+  let hasReplacement = false;
   const interpolated = expr.replace(/\$\{([^}]+)\}/g, (_, path) => {
+    const parts = path.split('.');
+    let value: any = context;
+    
+    for (const part of parts) {
+      if (value === undefined || value === null) {
+        return '${' + path + '}';  // 保持原样，不替换
+      }
+      value = value[part];
+    }
+    
+    if (value === undefined || value === null) {
+      return '${' + path + '}';  // 保持原样
+    }
+    
+    hasReplacement = true;
+    
+    // 如果是对象或数组，返回 JSON 字符串
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    
+    return String(value);
+  });
+
+  // 如果整个表达式就是一个 ${...}，尝试返回原始值类型
+  const singleExprMatch = expr.match(/^\$\{([^}]+)\}$/);
+  if (singleExprMatch) {
+    const path = singleExprMatch[1];
     const parts = path.split('.');
     let value: any = context;
     
@@ -45,26 +85,10 @@ export function evaluateExpression(expr: string, context: Record<string, any>): 
       value = value[part];
     }
     
-    return value;
-  });
-
-  // 如果是纯字符串插值，返回结果
-  if (interpolated !== expr) {
-    try {
-      // 尝试解析为 JSON
-      return JSON.parse(interpolated);
-    } catch {
-      return interpolated;
-    }
+    return value;  // 返回原始值（可能是对象、数组等）
   }
 
-  // 尝试作为 JavaScript 表达式求值
-  try {
-    const fn = new Function(...Object.keys(context), `return ${expr}`);
-    return fn(...Object.values(context));
-  } catch {
-    return expr;
-  }
+  return interpolated;
 }
 
 /**

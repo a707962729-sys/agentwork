@@ -110,7 +110,11 @@ export function createWorkflowsRouter(
       const { id } = req.params;
       const { inputs } = req.body as RunWorkflowRequest;
 
+      console.log(`[API] Running workflow: ${id}, inputs:`, JSON.stringify(inputs));
+      
       const run = await engine.run(id, inputs || {});
+      
+      console.log(`[API] Workflow run created: ${run.id}, status: ${run.status}`);
 
       const response: APIResponse<WorkflowRunResponse> = {
         success: true,
@@ -124,6 +128,7 @@ export function createWorkflowsRouter(
 
       res.status(202).json(response);
     } catch (error: any) {
+      console.error(`[API] Error running workflow:`, error);
       const response: APIResponse = {
         success: false,
         error: 'Failed to start workflow',

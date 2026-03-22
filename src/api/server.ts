@@ -20,6 +20,9 @@ import { createWorkflowsRouter } from './workflows.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 项目根目录
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+
 export class APIServer {
   private app: Application;
   private port: number;
@@ -38,9 +41,12 @@ export class APIServer {
     // 加载配置文件
     this.loadConfig();
 
-    // 初始化数据库和引擎
-    this.db = new DatabaseManager('data/agentwork.db');
-    this.skills = new SkillsRegistry(this.db, './skills');
+    // 初始化数据库和引擎 - 使用绝对路径
+    const dbPath = path.join(PROJECT_ROOT, 'data', 'agentwork.db');
+    this.db = new DatabaseManager(dbPath);
+    
+    const skillsPath = path.join(PROJECT_ROOT, 'skills');
+    this.skills = new SkillsRegistry(this.db, skillsPath);
     
     // 初始化 AgentRunner（独立 AI 调用）
     this.agentRunner = new AgentRunner(this.db, this.getAIConfig());

@@ -19,6 +19,12 @@ export { MemoryManagerImpl, getMemoryManager } from './memory/index.js';
 export * from './types.js';
 export * from './utils.js';
 
+// 新模块导出
+export * from './subagents/index.js';
+export * from './acp/index.js';
+export * from './sandbox/index.js';
+export * from './context/index.js';
+
 import { DatabaseManager } from './db/index.js';
 import { WorkflowEngine } from './workflow/engine.js';
 import { SkillsRegistry } from './skills/index.js';

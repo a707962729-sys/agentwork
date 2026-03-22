@@ -12,7 +12,15 @@ export class DatabaseManager {
 
   constructor(dbPath: string) {
     const expandedPath = expandHome(dbPath);
-    this.db = new Database(expandedPath);
+    // 启用 WAL 模式和写前日志
+    this.db = new Database(expandedPath, { 
+      fileMustExist: false,
+      readonly: false,
+      timeout: 5000
+    });
+    // 启用 WAL 模式提高并发性能
+    this.db.pragma('journal_mode = WAL');
+    this.db.pragma('synchronous = NORMAL');
     this.init();
   }
 
@@ -287,12 +295,14 @@ export class DatabaseManager {
     const id = uuid();
     const now = new Date().toISOString();
 
+    console.log(`[DB] Creating workflow run: ${id}, workflow: ${run.workflowId}`);
+
     const stmt = this.db.prepare(`
       INSERT INTO workflow_runs (id, workflow_id, status, inputs, steps, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(
+    const result = stmt.run(
       id,
       run.workflowId,
       run.status,
@@ -301,6 +311,8 @@ export class DatabaseManager {
       now,
       now
     );
+
+    console.log(`[DB] Insert result: changes=${result.changes}, lastInsertRowid=${result.lastInsertRowid}`);
 
     return { ...run, id, createdAt: new Date(now), updatedAt: new Date(now) };
   }

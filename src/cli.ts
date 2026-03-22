@@ -254,5 +254,145 @@ function getStatusEmoji(status: string): string {
   return map[status] || '❓';
 }
 
+// ==================== Sandbox 命令 ====================
+const sandboxCmd = program.command('sandbox').description('沙箱管理');
+
+sandboxCmd
+  .command('run <script>')
+  .description('在沙箱中执行脚本')
+  .option('-t, --timeout <ms>', '超时时间 (ms)', '30000')
+  .option('-m, --memory <mb>', '最大内存 (MB)', '512')
+  .option('-n, --network <mode>', '网络访问模式 (none|restricted|full)', 'restricted')
+  .option('-e, --env <vars...>', '环境变量 (KEY=VALUE)')
+  .action(async (script, options) => {
+    console.log(`🔒 沙箱执行: ${script}`);
+    console.log(`   超时: ${options.timeout}ms`);
+    console.log(`   内存限制: ${options.memory}MB`);
+    console.log(`   网络模式: ${options.network}`);
+    
+    // TODO: 实际沙箱执行逻辑
+    console.log(`\n⚠️ 沙箱模块尚未完全实现`);
+    console.log(`   脚本: ${script}`);
+  });
+
+sandboxCmd
+  .command('exec <code>')
+  .description('在沙箱中执行代码片段')
+  .option('-l, --language <lang>', '代码语言 (javascript|typescript|python|shell)', 'javascript')
+  .option('-t, --timeout <ms>', '超时时间 (ms)', '30000')
+  .action(async (code, options) => {
+    console.log(`🔒 沙箱代码执行`);
+    console.log(`   语言: ${options.language}`);
+    console.log(`   代码: ${code.substring(0, 100)}${code.length > 100 ? '...' : ''}`);
+    
+    // TODO: 实际代码执行逻辑
+    console.log(`\n⚠️ 沙箱模块尚未完全实现`);
+  });
+
+// ==================== ACP 命令 ====================
+const acpCmd = program.command('acp').description('ACP 协议服务');
+
+acpCmd
+  .command('serve')
+  .description('启动 ACP 服务器 (stdio 模式)')
+  .option('-n, --name <name>', '服务器名称', 'AgentWork')
+  .option('--timeout <ms>', '请求超时时间', '120000')
+  .action(async (options) => {
+    console.log(`🚀 启动 ACP 服务器...`);
+    console.log(`   名称: ${options.name}`);
+    console.log(`   超时: ${options.timeout}ms`);
+    console.log(`   模式: stdio`);
+    
+    try {
+      const { ACPServer } = await import('./acp/server.js');
+      const server = new ACPServer({
+        name: options.name,
+        version: '1.0.0',
+        capabilities: {
+          streaming: true,
+          tools: true,
+          skills: true,
+          subagents: true,
+          memory: true
+        },
+        timeout: parseInt(options.timeout)
+      });
+      
+      console.log(`\n✅ ACP 服务器已启动，等待连接...`);
+      await server.start();
+    } catch (error: any) {
+      console.error(`❌ 启动失败: ${error.message}`);
+      process.exit(1);
+    }
+  });
+
+acpCmd
+  .command('capabilities')
+  .description('显示 ACP 能力信息')
+  .action(() => {
+    console.log('\nACP 能力:');
+    console.log('─'.repeat(50));
+    console.log('  ✅ streaming   - 流式响应');
+    console.log('  ✅ tools       - 工具调用');
+    console.log('  ✅ skills      - 技能系统');
+    console.log('  ✅ subagents   - 子代理');
+    console.log('  ✅ memory      - 记忆系统');
+    console.log('─'.repeat(50));
+  });
+
+// ==================== Subagent 命令 ====================
+const subagentCmd = program.command('subagent').description('子代理管理');
+
+subagentCmd
+  .command('list')
+  .description('列出所有可用子代理')
+  .action(async () => {
+    console.log('\n可用子代理:');
+    console.log('─'.repeat(60));
+    console.log('  🤖 general-purpose  - 通用子代理，继承主代理能力');
+    console.log('─'.repeat(60));
+    console.log('\n💡 提示: 在配置文件中添加自定义子代理');
+  });
+
+subagentCmd
+  .command('invoke <name> <task>')
+  .description('调用子代理执行任务')
+  .option('-c, --context <json>', '上下文 (JSON)', '{}')
+  .action(async (name, task, options) => {
+    console.log(`🤖 调用子代理: ${name}`);
+    console.log(`   任务: ${task}`);
+    
+    try {
+      const { SubAgentManager } = await import('./subagents/manager.js');
+      const { DatabaseManager } = await import('./db/index.js');
+      
+      // 简化演示
+      console.log(`\n⚠️ 子代理调用需要完整初始化`);
+      console.log(`   请通过 AgentWork API 使用子代理功能`);
+    } catch (error: any) {
+      console.error(`❌ 调用失败: ${error.message}`);
+    }
+  });
+
+subagentCmd
+  .command('info <name>')
+  .description('显示子代理详情')
+  .action(async (name) => {
+    console.log(`\n子代理详情: ${name}`);
+    console.log('─'.repeat(50));
+    
+    if (name === 'general-purpose') {
+      console.log('  名称: general-purpose');
+      console.log('  描述: 通用子代理，继承主代理的能力');
+      console.log('  功能:');
+      console.log('    - 继承主代理的所有技能和工具');
+      console.log('    - 支持委派复杂任务');
+      console.log('    - Context 隔离');
+    } else {
+      console.log(`  ❌ 未找到子代理: ${name}`);
+    }
+    console.log('─'.repeat(50));
+  });
+
 // 解析命令
 program.parse();
