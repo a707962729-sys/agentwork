@@ -5,6 +5,7 @@
 
 import { Command } from 'commander';
 import { AgentWork, getAgentWork } from './index.js';
+import { SandboxExecutor } from './sandbox/index.js';
 
 const program = new Command();
 
@@ -270,9 +271,13 @@ sandboxCmd
     console.log(`   内存限制: ${options.memory}MB`);
     console.log(`   网络模式: ${options.network}`);
     
-    // TODO: 实际沙箱执行逻辑
-    console.log(`\n⚠️ 沙箱模块尚未完全实现`);
-    console.log(`   脚本: ${script}`);
+    const executor = new SandboxExecutor();
+    const result = await executor.executeScript(script, [], { timeout: parseInt(options.timeout) });
+    
+    console.log(`\n${result.success ? '✅' : '❌'} 执行完成`);
+    if (result.stdout) console.log(`\n输出:\n${result.stdout}`);
+    if (result.stderr) console.log(`\n错误:\n${result.stderr}`);
+    console.log(`\n耗时: ${result.durationMs}ms`);
   });
 
 sandboxCmd
@@ -285,8 +290,13 @@ sandboxCmd
     console.log(`   语言: ${options.language}`);
     console.log(`   代码: ${code.substring(0, 100)}${code.length > 100 ? '...' : ''}`);
     
-    // TODO: 实际代码执行逻辑
-    console.log(`\n⚠️ 沙箱模块尚未完全实现`);
+    const executor = new SandboxExecutor();
+    const result = await executor.executeCode(code, options.language, { timeout: parseInt(options.timeout) });
+    
+    console.log(`\n${result.success ? '✅' : '❌'} 执行完成`);
+    if (result.stdout) console.log(`\n输出:\n${result.stdout}`);
+    if (result.stderr) console.log(`\n错误:\n${result.stderr}`);
+    console.log(`\n耗时: ${result.durationMs}ms`);
   });
 
 // ==================== ACP 命令 ====================

@@ -127,12 +127,21 @@ export class ACPServer {
     task.status = 'running';
     
     try {
-      // TODO: 实际任务执行逻辑
-      // 这里需要集成 AgentRunner
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 检查是否有自定义处理器
+      const customHandler = this.requestHandlers.get('tasks/execute');
       
-      task.status = 'completed';
-      task.result = { message: 'Task completed successfully' };
+      if (customHandler) {
+        // 使用自定义处理器
+        const result = await customHandler({ taskId, ...params });
+        task.status = 'completed';
+        task.result = result;
+      } else {
+        // 默认实现：简单等待
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        task.status = 'completed';
+        task.result = { message: 'Task completed successfully' };
+      }
+      
       task.completedAt = new Date();
     } catch (error: any) {
       task.status = 'failed';

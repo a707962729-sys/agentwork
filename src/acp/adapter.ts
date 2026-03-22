@@ -188,17 +188,43 @@ export class AgentWorkACPAdapter {
     }
 
     // 默认使用 AgentRunner
-    // TODO: 实际调用逻辑
-    return {
-      success: true,
-      output: `执行任务: ${task}`,
-      stats: {
-        iterations: 1,
-        toolCalls: 0,
-        tokensUsed: 0,
-        durationMs: 100
-      }
-    };
+    try {
+      // 构建输入
+      const skillInput = typeof inputs === 'string' ? { task: inputs } : inputs;
+      
+      // 调用 AgentRunner 执行
+      const result = await this.agentRunner.executeSkill(
+        { 
+          path: 'acp-task', 
+          manifest: { name: task, description: task }, 
+          content: '' 
+        },
+        skillInput,
+        inputs
+      );
+      
+      return {
+        success: true,
+        output: typeof result === 'string' ? result : JSON.stringify(result),
+        stats: {
+          iterations: 1,
+          toolCalls: 0,
+          tokensUsed: 0,
+          durationMs: 100
+        }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        output: error.message,
+        stats: {
+          iterations: 0,
+          toolCalls: 0,
+          tokensUsed: 0,
+          durationMs: 0
+        }
+      };
+    }
   }
 
   /**
@@ -207,11 +233,28 @@ export class AgentWorkACPAdapter {
   private async handleChat(params: any): Promise<any> {
     const { message, sessionId } = params;
 
-    // TODO: 实际聊天逻辑
-    return {
-      response: `收到消息: ${message}`,
-      sessionId
-    };
+    // 使用 AgentRunner 进行对话
+    try {
+      const result = await this.agentRunner.executeSkill(
+        { 
+          path: 'chat', 
+          manifest: { name: 'chat', description: 'Chat interaction' }, 
+          content: '' 
+        },
+        { message },
+        { sessionId }
+      );
+      
+      return {
+        response: typeof result === 'string' ? result : JSON.stringify(result),
+        sessionId
+      };
+    } catch (error: any) {
+      return {
+        response: `处理消息时出错: ${error.message}`,
+        sessionId
+      };
+    }
   }
 
   /**

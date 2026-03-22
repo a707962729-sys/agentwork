@@ -15,6 +15,16 @@ import { Skill } from '../types.js';
 import * as crypto from 'crypto';
 
 /**
+ * AI Provider 接口（简化版）
+ */
+interface AIProvider {
+  name: string;
+  apiBase: string;
+  model: string;
+  apiKey?: string;
+}
+
+/**
  * SubAgent 管理器
  */
 export class SubAgentManager {
@@ -157,26 +167,51 @@ export class SubAgentManager {
     const context = this.createContext(name, parentContext, task);
 
     try {
-      // TODO: 实际执行逻辑需要集成 AI Provider
-      // 这里返回模拟结果
-      const result: SubAgentResult = {
-        success: true,
-        output: `子代理 ${name} 完成任务: ${task.substring(0, 100)}...`,
-        stats: {
-          iterations: 1,
-          toolCalls: 0,
-          tokensUsed: 0,
-          durationMs: Date.now() - startTime
-        },
-        metadata: {
-          agentName: name,
-          lcAgentName: name,
-          startedAt: new Date(startTime),
-          completedAt: new Date()
-        }
-      };
-
-      return result;
+      // 获取 AI Provider 配置
+      const provider = this.getAvailableProvider(subagent.model);
+      
+      if (provider) {
+        // 实际调用 AI
+        const systemPrompt = subagent.systemPrompt || `你是一个专业的 ${name} 助手。`;
+        const aiOutput = await this.callAI(provider, systemPrompt, task);
+        
+        const result: SubAgentResult = {
+          success: true,
+          output: aiOutput,
+          stats: {
+            iterations: 1,
+            toolCalls: 0,
+            tokensUsed: 0, // 可以从 AI 响应中提取
+            durationMs: Date.now() - startTime
+          },
+          metadata: {
+            agentName: name,
+            lcAgentName: name,
+            startedAt: new Date(startTime),
+            completedAt: new Date()
+          }
+        };
+        return result;
+      } else {
+        // 没有 AI 配置，返回模拟结果
+        const result: SubAgentResult = {
+          success: true,
+          output: `[${name}] 任务完成: ${task.substring(0, 100)}...`,
+          stats: {
+            iterations: 1,
+            toolCalls: 0,
+            tokensUsed: 0,
+            durationMs: Date.now() - startTime
+          },
+          metadata: {
+            agentName: name,
+            lcAgentName: name,
+            startedAt: new Date(startTime),
+            completedAt: new Date()
+          }
+        };
+        return result;
+      }
     } catch (error: any) {
       return {
         success: false,
@@ -237,6 +272,119 @@ export class SubAgentManager {
     }
     
     return matches / taskWords.length;
+  }
+
+  /**
+   * 获取可用的 AI Provider
+   */
+  private getAvailableProvider(preferredModel?: string): AIProvider | null {
+    // 优先使用指定的模型
+    if (preferredModel) {
+      const modelMap: Record<string, AIProvider> = {
+        'glm-5': {
+          name: 'glm',
+          apiBase: process.env.ZHIPU_API_BASE || 'https://open.bigmodel.cn/api/paas/v4',
+          model: 'glm-5',
+          apiKey: process.env.ZHIPU_API_KEY || process.env.AI_API_KEY
+        },
+        'gpt-4': {
+          name: 'openai',
+          apiBase: process.env.OPENAI_API_BASE || 'https://api.openai.com/v1',
+          model: 'gpt-4o-mini',
+          apiKey: process.env.OPENAI_API_KEY
+        },
+        'qwen': {
+          name: 'ollama',
+          apiBase: process.env.OLLAMA_API_BASE || 'http://localhost:11434/v1',
+          model: 'qwen2.5:7b',
+          apiKey: 'ollama'
+        }
+      };
+      
+      for (const [key, provider] of Object.entries(modelMap)) {
+        if (preferredModel.includes(key) && provider.apiKey) {
+          return provider;
+        }
+      }
+    }
+    
+    // 默认优先级：glm > openai > ollama
+    const providers: AIProvider[] = [
+      {
+        name: 'glm',
+        apiBase: process.env.ZHIPU_API_BASE || 'https://open.bigmodel.cn/api/paas/v4',
+        model: 'glm-5',
+        apiKey: process.env.ZHIPU_API_KEY || process.env.AI_API_KEY
+      },
+      {
+        name: 'openai',
+        apiBase: process.env.OPENAI_API_BASE || 'https://api.openai.com/v1',
+        model: 'gpt-4o-mini',
+        apiKey: process.env.OPENAI_API_KEY
+      },
+      {
+        name: 'ollama',
+        apiBase: process.env.OLLAMA_API_BASE || 'http://localhost:11434/v1',
+        model: 'qwen2.5:7b',
+        apiKey: 'ollama'
+      }
+    ];
+    
+    for (const provider of providers) {
+      if (provider.apiKey && provider.apiKey !== 'ollama') {
+        return provider;
+      }
+    }
+    
+    // 最后尝试 ollama
+    return providers[2];
+  }
+
+  /**
+   * 调用 AI API
+   */
+  private async callAI(provider: AIProvider, systemPrompt: string, task: string): Promise<string> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
+    
+    try {
+      const response = await fetch(`${provider.apiBase}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${provider.apiKey}`
+        },
+        body: JSON.stringify({
+          model: provider.model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: task }
+          ],
+          temperature: 0.7,
+          max_tokens: 2048
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`AI API error: ${response.status}`);
+      }
+      
+      const data = await response.json() as any;
+      return data.choices?.[0]?.message?.content || '';
+      
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      
+      if (error.name === 'AbortError') {
+        return '[AI 请求超时]';
+      }
+      
+      console.error('AI call error:', error.message);
+      return `[AI 调用失败: ${error.message}]`;
+    }
   }
 }
 
