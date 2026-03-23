@@ -10,6 +10,8 @@ import { Skill, SkillManifest } from '../types.js';
 import { expandHome, ensureDir } from '../utils.js';
 import { DatabaseManager } from '../db/index.js';
 
+export { SkillMatcher, MatchResult } from './matcher.js';
+
 export class SkillsRegistry {
   private db: DatabaseManager;
   private skillsDir: string;
