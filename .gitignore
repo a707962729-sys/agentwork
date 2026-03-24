@@ -1,31 +1,19 @@
-# Dependencies
 node_modules/
-
-# Build output
 dist/
-
-# Test temp directories
-src/__tests__/test-skills-*/
-
-# Database
-data/*.db
-data/*.db-journal
-
-# Logs
 *.log
-logs/
-
-# OS files
 .DS_Store
-Thumbs.db
-
-# IDE
+.env
+*.db
+coverage/
 .idea/
 .vscode/
-*.swp
-*.swo
 
-# Environment
-.env
-.env.local
-.env.*.local
+# Chrome profile data (too large)
+skills/boss-resume/profile/
+
+# Test files
+test-p0.ts
+tests/
+
+# Docker
+docker/

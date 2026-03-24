@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = '/api/v1'
+const API_BASE_URL = '/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -28,6 +28,12 @@ export const taskApi = {
   
   control: (id: string, action: 'pause' | 'resume' | 'cancel') =>
     api.post(`/tasks/${id}/control`, { action }),
+  
+  approveDecision: (decisionId: string, decision: 'approve' | 'reject') =>
+    api.post(`/decisions/${decisionId}/approve`, { decision }),
+  
+  rejectDecision: (decisionId: string, reason: string) =>
+    api.post(`/decisions/${decisionId}/reject`, { reason }),
 }
 
 // Agent 相关 API
@@ -76,6 +82,9 @@ export const workflowApi = {
   
   execute: (id: string, params?: any) =>
     api.post(`/workflows/${id}/execute`, params),
+  
+  toggleStatus: (id: string, enabled: boolean) =>
+    api.post(`/workflows/${id}/toggle`, { enabled }),
 }
 
 // 聊天相关 API

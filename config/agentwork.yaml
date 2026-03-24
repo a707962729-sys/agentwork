@@ -1,0 +1,129 @@
+# AgentWork 默认配置
+# 一人公司自动化平台
+
+# 工作空间配置
+workspace:
+  # 工作目录
+  dir: ~/.agentwork
+  # 技能目录
+  skillsDir: ~/.agentwork/skills
+  # 工作流目录
+  workflowsDir: ~/.agentwork/workflows
+  # 代理目录
+  agentsDir: ~/.agentwork/agents
+  # 数据库路径
+  dbPath: ~/.agentwork/data/agentwork.db
+
+# 子代理配置
+subagents:
+  # 默认超时 (ms)
+  defaultTimeout: 120000
+  # 默认最大迭代次数
+  defaultMaxIterations: 10
+  
+  # 通用子代理配置
+  generalPurpose:
+    enabled: true
+    # 模型覆盖 (可选)
+    # model: qwen-cn/glm-5
+    # 系统提示词覆盖 (可选)
+    # systemPrompt: ""
+    # 额外工具
+    additionalTools: []
+  
+  # 自定义子代理列表
+  subagents: []
+    # 示例:
+    # - name: code-reviewer
+    #   description: 代码审查专家，负责代码质量检查
+    #   systemPrompt: 你是一个专业的代码审查专家...
+    #   tools:
+    #     - fs_read
+    #     - shell_exec
+    #   maxIterations: 5
+    #   timeout: 60000
+
+# ACP 服务器配置
+acp:
+  enabled: false
+  name: AgentWork
+  version: 1.0.0
+  # 超时时间 (ms)
+  timeout: 120000
+  # 能力配置
+  capabilities:
+    streaming: true
+    tools: true
+    skills: true
+    subagents: true
+    memory: true
+
+# 沙箱配置
+sandbox:
+  # 默认超时 (ms)
+  timeout: 30000
+  # 最大内存 (MB)
+  maxMemory: 512
+  # 网络访问: none | restricted | full
+  networkAccess: restricted
+  # 允许的域名 (networkAccess = restricted 时)
+  allowedDomains:
+    - api.openai.com
+    - api.anthropic.com
+    - dashscope.aliyuncs.com
+  # 文件系统访问
+  fsAccess: false
+  # 允许的路径 (fsAccess = true 时)
+  allowedPaths: []
+
+# 任务队列配置
+taskQueue:
+  # 最大并发任务数
+  maxConcurrent: 5
+  # 优先级级别
+  priorityLevels:
+    - critical
+    - high
+    - normal
+    - low
+
+# 触发器配置
+triggers:
+  # Cron 调度器
+  cron:
+    enabled: true
+    # 检查间隔 (ms)
+    checkInterval: 60000
+  
+  # Webhook 接收器
+  webhook:
+    enabled: true
+    # 监听端口
+    port: 3100
+    # 路径前缀
+    pathPrefix: /webhook
+
+# 通知配置
+notifications:
+  channels:
+    - type: console
+      enabled: true
+    # - type: qqbot
+    #   enabled: true
+    #   config:
+    #     host: localhost
+    #     port: 8080
+
+# 日志配置
+logging:
+  level: info
+  # 输出格式: json | text
+  format: text
+  # 日志文件
+  file:
+    enabled: true
+    path: ~/.agentwork/logs/agentwork.log
+    # 最大文件大小 (MB)
+    maxSize: 10
+    # 保留文件数
+    maxFiles: 5

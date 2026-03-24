@@ -1,0 +1,176 @@
+# 在线课程制作工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: course-creator
+  name: 在线课程制作
+  description: 制作销售在线课程自动化流程
+  version: "1.0.0"
+  author: agentwork
+  tags: [education, course, creation]
+
+# 触发方式
+triggers:
+  - type: manual
+  - type: schedule
+    cron: "0 10 * * 1"
+
+# 输入参数
+inputs:
+  courseTitle:
+    type: string
+    required: true
+    description: "课程标题"
+  targetAudience:
+    type: string
+    default: "beginner"
+    enum: ["beginner", "intermediate", "advanced"]
+  duration:
+    type: string
+    default: "2小时"
+    enum: ["1小时", "2小时", "4小时", "8小时"]
+
+# Agent 配置
+agents:
+  - id: researcher
+    type: research
+    trigger: auto
+  - id: designer
+    type: design
+    trigger: auto
+  - id: creator
+    type: content
+    trigger: auto
+  - id: marketer
+    type: marketing
+    trigger: auto
+
+# 执行步骤
+steps:
+  - id: market-research
+    name: "市场调研"
+    skill: market-research
+    agent: researcher
+    input:
+      topic: "${inputs.courseTitle}"
+      audience: "${inputs.targetAudience}"
+    checkpoint:
+      validate: "output.marketSize >= 10000"
+      onError: retry
+
+  - id: course-design
+    name: "课程设计"
+    skill: course-designer
+    agent: designer
+    dependsOn: [market-research]
+    input:
+      title: "${inputs.courseTitle}"
+      audience: "${inputs.targetAudience}"
+      duration: "${inputs.duration}"
+    checkpoint:
+      validate: "output.modules.length >= 5"
+      onError: retry
+
+  - id: curriculum-structure
+    name: "大纲设计"
+    skill: curriculum-design
+    agent: designer
+    dependsOn: [course-design]
+    input:
+      title: "${inputs.courseTitle}"
+      modules: "${steps.course-design.output.modules}"
+    checkpoint:
+      validate: "output.curriculum.length >= 10"
+      onError: retry
+
+  - id: content-writing
+    name: "内容撰写"
+    skill: content-creator
+    agent: creator
+    dependsOn: [curriculum-structure]
+    input:
+      title: "${inputs.courseTitle}"
+      curriculum: "${steps.curriculum-structure.output}"
+    checkpoint:
+      validate: "output.totalWordCount >= 5000"
+      onError: retry
+
+  - id: slide-production
+    name: "课件制作"
+    skill: slide-generator
+    agent: designer
+    dependsOn: [content-writing]
+    input:
+      content: "${steps.content-writing.output}"
+      modules: "${steps.course-design.output.modules}"
+    checkpoint:
+      validate: "output.slides.length >= ${steps.curriculum-structure.output.curriculum.length}"
+
+  - id: video-production
+    name: "视频制作"
+    skill: video-production
+    agent: creator
+    dependsOn: [slide-production]
+    input:
+      slides: "${steps.slide-production.output}"
+      script: "${steps.content-writing.output}"
+      duration: "${inputs.duration}"
+    checkpoint:
+      validate: "output.videoUrl != null"
+      onError: retry
+
+  - id: quality-review
+    name: "质量审核"
+    skill: quality-reviewer
+    agent: reviewer
+    dependsOn: [video-production]
+    checkpoint:
+      requireApproval: true
+      onReject:
+        goto: video-production
+        message: "请根据审核意见修改"
+
+  - id: platform-publishing
+    name: "平台发布"
+    skill: course-uploader
+    agent: creator
+    dependsOn: [quality-review]
+    input:
+      title: "${inputs.courseTitle}"
+      videoUrl: "${steps.video-production.output.videoUrl}"
+      slides: "${steps.slide-production.output}"
+      content: "${steps.content-writing.output}"
+      platform: "xxx"
+    checkpoint:
+      validate: "output.courseId != null"
+
+  - id: marketing-campaign
+    name: "营销推广"
+    skill: marketing-planner
+    agent: marketer
+    dependsOn: [platform-publishing]
+    input:
+      courseTitle: "${inputs.courseTitle}"
+      platform: "xxx"
+    checkpoint:
+      validate: "output.promotionPlan != null"
+
+  - id: sales-page
+    name: "销售页制作"
+    skill: sales-page-creator
+    agent: marketer
+    dependsOn: [marketing-campaign]
+    input:
+      courseTitle: "${inputs.courseTitle}"
+      modules: "${steps.course-design.output.modules}"
+    checkpoint:
+      validate: "output.pageUrl != null"
+
+# 输出
+outputs:
+  courseId: "${steps.platform-publishing.output.courseId}"
+  courseUrl: "${steps.platform-publishing.output.courseUrl}"
+  salesPageUrl: "${steps.sales-page.output.pageUrl}"
+  estimatedRevenue: "根据销量计算"

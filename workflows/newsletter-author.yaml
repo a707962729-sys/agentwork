@@ -1,0 +1,135 @@
+# 付费订阅/Newsletter 工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: newsletter-author
+  name: 付费订阅作者
+  description: 付费邮件订阅自动化流程
+  version: "1.0.0"
+  author: agentwork
+  tags: [newsletter, subscription, email]
+
+# 触发方式
+triggers:
+  - type: schedule
+    cron: "0 8 * * 1"
+
+# 输入参数
+inputs:
+  topic:
+    type: string
+    required: true
+    description: "订阅主题"
+  frequency:
+    type: string
+    default: "weekly"
+    enum: ["weekly", "biweekly", "monthly"]
+  length:
+    type: string
+    default: "medium"
+    enum: ["short", "medium", "long"]
+
+# Agent 配置
+agents:
+  - id: researcher
+    type: research
+    trigger: auto
+  - id: writer
+    type: writing
+    trigger: auto
+  - id: publisher
+    type: publishing
+    trigger: auto
+
+# 执行步骤
+steps:
+  - id: topic-research
+    name: "选题调研"
+    skill: newsletter-topic-research
+    agent: researcher
+    input:
+      topic: "${inputs.topic}"
+      frequency: "${inputs.frequency}"
+    checkpoint:
+      validate: "output.topics.length >= 5"
+      onError: retry
+
+  - id: content-research
+    name: "内容调研"
+    skill: web-search
+    agent: researcher
+    dependsOn: [topic-research]
+    input:
+      query: "${inputs.topic} 最新资讯 专家观点"
+    checkpoint:
+      validate: "output.results.length >= 10"
+      onError: retry
+
+  - id: newsletter-writing
+    name: "Newsletter撰写"
+    skill: newsletter-writer
+    agent: writer
+    dependsOn: [content-research]
+    input:
+      topic: "${inputs.topic}"
+      research: "${steps.content-research.output}"
+      length: "${inputs.length}"
+      frequency: "${inputs.frequency}"
+    checkpoint:
+      validate: "output.wordCount >= 500"
+      onError: retry
+
+  - id: newsletter-design
+    name: "排版设计"
+    skill: newsletter-designer
+    agent: writer
+    dependsOn: [newsletter-writing]
+    input:
+      content: "${steps.newsletter-writing.output}"
+      frequency: "${inputs.frequency}"
+    checkpoint:
+      validate: "output.html != null"
+      onError: retry
+
+  - id: preview
+    name: "预览测试"
+    skill: newsletter-preview
+    agent: writer
+    dependsOn: [newsletter-design]
+    input:
+      html: "${steps.newsletter-design.output.html}"
+    checkpoint:
+      requireApproval: true
+      onReject:
+        goto: newsletter-design
+        message: "请根据预览意见修改"
+
+  - id: email-sending
+    name: "邮件发送"
+    skill: newsletter-publisher
+    agent: publisher
+    dependsOn: [preview]
+    input:
+      html: "${steps.newsletter-design.output.html}"
+      frequency: "${inputs.frequency}"
+    checkpoint:
+      validate: "output.sentCount >= 1"
+
+  - id: analytics
+    name: "数据分析"
+    skill: newsletter-analytics
+    agent: publisher
+    dependsOn: [email-sending]
+    input:
+      sentCount: "${steps.email-sending.output.sentCount}"
+    checkpoint:
+      validate: "output.metrics.length >= 5"
+
+# 输出
+outputs:
+  newsletterHtml: "${steps.newsletter-design.output.html}"
+  sentCount: "${steps.email-sending.output.sentCount}"
+  openRate: "${steps.analytics.output.openRate}"
+  revenue: "根据订阅费计算"

@@ -1,0 +1,129 @@
+# 自媒体创作者工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: content-creator
+  name: 自媒体创作者
+  description: 自动化内容创作流程 - 小红书/抖音内容创作
+  version: "1.0.0"
+  author: agentwork
+  tags: [content, publishing, social-media]
+
+# 触发方式
+triggers:
+  - type: manual
+  - type: schedule
+    cron: "0 10 * * *"
+
+# 输入参数
+inputs:
+  topic:
+    type: string
+    required: true
+    description: "内容主题"
+  platform:
+    type: string
+    default: "xiaohongshu"
+    enum: ["xiaohongshu", "douyin", "weibo"]
+  wordCount:
+    type: number
+    default: 800
+    description: "文章字数"
+
+# Agent 配置
+agents:
+  - id: researcher
+    type: research
+    trigger: manual
+  - id: writer
+    type: writing
+    trigger: auto
+  - id: designer
+    type: design
+    trigger: auto
+  - id: publisher
+    type: publish
+    trigger: manual
+
+# 执行步骤
+steps:
+  - id: topic-research
+    name: "选题调研"
+    skill: web-search
+    agent: researcher
+    input:
+      query: "${inputs.topic} 最新趋势 热门话题"
+    checkpoint:
+      validate: "output.results.length >= 3"
+      onError: retry
+      maxRetries: 2
+
+  - id: outline
+    name: "大纲设计"
+    skill: article-outline
+    agent: writer
+    dependsOn: [topic-research]
+    input:
+      topic: "${inputs.topic}"
+      platform: "${inputs.platform}"
+      context: "${steps.topic-research.output}"
+    checkpoint:
+      validate: "output.sections.length >= 3"
+      onError: retry
+
+  - id: content-writing
+    name: "内容生成"
+    skill: article-writing
+    agent: writer
+    dependsOn: [outline]
+    input:
+      topic: "${inputs.topic}"
+      platform: "${inputs.platform}"
+      outline: "${steps.outline.output}"
+      wordCount: "${inputs.wordCount}"
+    checkpoint:
+      validate: "output.wordCount >= ${inputs.wordCount}"
+      onError: retry
+      maxRetries: 2
+
+  - id: image-generation
+    name: "配图生成"
+    skill: image-gen
+    agent: designer
+    dependsOn: [content-writing]
+    input:
+      prompt: "小红书封面: ${inputs.topic} - ${steps.content-writing.output.wordCount}字干货"
+      style: "minimalist"
+    checkpoint:
+      validate: "output.images.length >= 1"
+
+  - id: review
+    name: "内容审核"
+    skill: content-review
+    agent: reviewer
+    dependsOn: [content-writing, image-generation]
+    checkpoint:
+      requireApproval: true
+      onReject:
+        goto: content-writing
+        message: "请根据审核意见修改"
+
+  - id: publish
+    name: "发布内容"
+    skill: xiaohongshu-publish
+    agent: publisher
+    dependsOn: [review]
+    input:
+      article: "${steps.content-writing.output}"
+      cover: "${steps.image-generation.output.images[0]}"
+      platform: "${inputs.platform}"
+    checkpoint:
+      validate: "output.success == true"
+
+# 输出
+outputs:
+  articleUrl: "${steps.publish.output.url}"
+  previewUrl: "${steps.publish.output.previewUrl}"
+  content: "${steps.content-writing.output}"

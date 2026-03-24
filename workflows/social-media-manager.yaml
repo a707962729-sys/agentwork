@@ -1,0 +1,127 @@
+# 社媒代运营工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: social-media-manager
+  name: 社媒代运营
+  description: 为企业代运营社交媒体账号自动化流程
+  version: "1.0.0"
+  author: agentwork
+  tags: [social-media, marketing, management]
+
+# 触发方式
+triggers:
+  - type: schedule
+    cron: "0 9 * * *"
+  - type: manual
+
+# 输入参数
+inputs:
+  platform:
+    type: string
+    required: true
+    enum: ["xiaohongshu", "douyin", "weibo", "wechat"]
+  contentTheme:
+    type: string
+    default: "industry"
+    description: "内容主题"
+  postingFrequency:
+    type: number
+    default: 3
+    description: "每周发布次数"
+
+# Agent 配置
+agents:
+  - id: planner
+    type: planning
+    trigger: auto
+  - id: creator
+    type: content
+    trigger: auto
+  - id: publisher
+    type: publishing
+    trigger: auto
+  - id: analyst
+    type: analytics
+    trigger: auto
+
+# 执行步骤
+steps:
+  - id: content-planning
+    name: "内容规划"
+    skill: content-planner
+    agent: planner
+    input:
+      platform: "${inputs.platform}"
+      theme: "${inputs.contentTheme}"
+    checkpoint:
+      validate: "output.contentCalendar.length >= 7"
+      onError: abort
+
+  - id: content-creation
+    name: "内容创作"
+    skill: content-creator
+    agent: creator
+    dependsOn: [content-planning]
+    input:
+      platform: "${inputs.platform}"
+      contentPlan: "${steps.content-planning.output}"
+    checkpoint:
+      validate: "output.contents.length >= ${inputs.postingFrequency}"
+      onError: retry
+
+  - id: design-assets
+    name: "设计素材"
+    skill: design-creator
+    agent: creator
+    dependsOn: [content-creation]
+    input:
+      contents: "${steps.content-creation.output.contents}"
+      platform: "${inputs.platform}"
+    checkpoint:
+      validate: "output.assets.length >= ${steps.content-creation.output.contents.length}"
+
+  - id: scheduling
+    name: "内容排期"
+    skill: scheduler
+    agent: publisher
+    dependsOn: [content-creation, design-assets]
+    input:
+      contents: "${steps.content-creation.output.contents}"
+      assets: "${steps.design-assets.output}"
+      frequency: "${inputs.postingFrequency}"
+    checkpoint:
+      validate: "output.schedule.length >= ${inputs.postingFrequency}"
+
+  - id: publishing
+    name: "正式发布"
+    skill: publisher
+    agent: publisher
+    dependsOn: [scheduling]
+    input:
+      schedule: "${steps.scheduling.output}"
+      platform: "${inputs.platform}"
+    checkpoint:
+      validate: "output.postedCount >= ${inputs.postingFrequency}"
+      onError: retry
+
+  - id: analytics
+    name: "数据报告"
+    skill: analytics-reporter
+    agent: analyst
+    dependsOn: [publishing]
+    input:
+      platform: "${inputs.platform}"
+      schedule: "${steps.scheduling.output}"
+    checkpoint:
+      validate: "output.metrics.length >= 10"
+      onError: retry
+
+# 输出
+outputs:
+  contentCalendar: "${steps.content-planning.output.contentCalendar}"
+  postedContent: "${steps.publishing.output.postedContent}"
+  metrics: "${steps.analytics.output.metrics}"
+  engagementRate: "${steps.analytics.output.engagementRate}"

@@ -1,5 +1,5 @@
 /**
- * 工作流引擎
+ * 工作流引擎 - 修复版本
  */
 
 import { parse as parseYaml } from 'yaml';
@@ -18,17 +18,20 @@ import { DatabaseManager } from '../db/index.js';
 import { expandHome, evaluateExpression, ensureDir } from '../utils.js';
 import { CheckpointManager } from './checkpoint.js';
 import { SkillsRegistry } from '../skills/index.js';
+import { AgentRunner } from '../agent-engine/AgentRunner.js';
 
 export class WorkflowEngine {
   private db: DatabaseManager;
   private checkpoint: CheckpointManager;
   private skills: SkillsRegistry;
+  private agentRunner: AgentRunner;
   private eventHandlers: Map<string, Set<EventHandler>> = new Map();
   private runningWorkflows: Map<string, Promise<void>> = new Map();
 
-  constructor(db: DatabaseManager, skills: SkillsRegistry) {
+  constructor(db: DatabaseManager, skills: SkillsRegistry, agentRunner?: AgentRunner) {
     this.db = db;
     this.skills = skills;
+    this.agentRunner = agentRunner || new AgentRunner(db);
     this.checkpoint = new CheckpointManager();
   }
 
@@ -114,6 +117,8 @@ export class WorkflowEngine {
       steps
     });
 
+    console.log(`🚀 [Workflow] Starting workflow: ${workflowId}, runId: ${run.id}`);
+
     // 触发事件
     this.emit({ type: 'workflow:started', data: { runId: run.id, workflowId }, timestamp: new Date() });
 
@@ -122,8 +127,14 @@ export class WorkflowEngine {
     this.runningWorkflows.set(run.id, promise);
 
     promise
-      .then(() => this.runningWorkflows.delete(run.id))
-      .catch(() => this.runningWorkflows.delete(run.id));
+      .then(() => {
+        console.log(`✅ [Workflow] Completed: ${run.id}`);
+        this.runningWorkflows.delete(run.id);
+      })
+      .catch((err) => {
+        console.error(`❌ [Workflow] Failed: ${run.id}`, err.message);
+        this.runningWorkflows.delete(run.id);
+      });
 
     return run;
   }
@@ -148,9 +159,9 @@ export class WorkflowEngine {
   }
 
   /**
-   * 执行工作流运行
+   * 执行工作流运行 - 改为 public 以便 RecoveryManager 调用
    */
-  private async executeRun(runId: string, workflow: WorkflowDefinition, inputs: Record<string, any>): Promise<void> {
+  async executeRun(runId: string, workflow: WorkflowDefinition, inputs: Record<string, any>): Promise<void> {
     let run = this.db.getWorkflowRun(runId)!;
     run.status = 'running';
     run.startedAt = new Date();
@@ -229,6 +240,7 @@ export class WorkflowEngine {
     step.status = 'running';
     step.startedAt = new Date();
 
+    console.log(`  ▶️ [Step] Starting: ${step.id} - ${step.title}`);
     this.emit({ type: 'step:started', data: { runId, stepId: step.id, title: step.title }, timestamp: new Date() });
 
     try {
@@ -243,15 +255,24 @@ export class WorkflowEngine {
           }
         }
       }
+      console.log(`    📥 Input:`, JSON.stringify(resolvedInput, null, 2).slice(0, 200));
 
       // 获取技能
       const skill = await this.skills.load(step.skill);
       if (!skill) {
         throw new Error(`Skill not found: ${step.skill}`);
       }
+      console.log(`    🔧 Skill: ${skill.manifest.name}`);
 
-      // 执行技能（这里简化处理，实际应该调用 Agent）
-      step.output = await this.executeSkill(skill, resolvedInput);
+      // 使用真正的 Agent 执行技能
+      console.log(`    🤖 Calling AI...`);
+      try {
+        step.output = await this.agentRunner.executeSkillWithRetry(skill, resolvedInput, context);
+        console.log(`    📤 Output:`, JSON.stringify(step.output).slice(0, 200));
+      } catch (aiError: any) {
+        console.error(`    ❌ AI Error:`, aiError.message);
+        throw aiError;
+      }
 
       // 检查点验证
       if (step.checkpoint) {
@@ -298,21 +319,6 @@ export class WorkflowEngine {
       this.emit({ type: 'step:failed', data: { runId, stepId: step.id, error: error.message }, timestamp: new Date() });
       throw error;
     }
-  }
-
-  /**
-   * 执行技能（简化版）
-   */
-  private async executeSkill(skill: any, input: Record<string, any>): Promise<any> {
-    // 这里应该调用 Agent 执行技能
-    // 简化处理，直接返回输入
-    return {
-      success: true,
-      skill: skill.manifest?.name || 'unknown',
-      input,
-      output: `Skill ${skill.manifest?.name} executed with input: ${JSON.stringify(input)}`,
-      timestamp: new Date().toISOString()
-    };
   }
 
   /**

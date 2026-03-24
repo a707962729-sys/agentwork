@@ -12,16 +12,6 @@ export interface AnthropicConfig {
   version?: string;
 }
 
-interface AnthropicResponse {
-  content: Array<{
-    type: string;
-    text?: string;
-    id?: string;
-    name?: string;
-    input?: any;
-  }>;
-}
-
 /**
  * Anthropic Provider 实现
  */
@@ -80,8 +70,8 @@ export class AnthropicProvider extends AIProvider {
       throw new Error(`Anthropic API error: ${response.status} ${error}`);
     }
 
-    const data = await response.json() as AnthropicResponse;
-    return data.content[0].text!;
+    const data = await response.json() as { content: { text: string }[] };
+    return data.content[0].text;
   }
 
   async chatWithTools(
@@ -128,17 +118,17 @@ export class AnthropicProvider extends AIProvider {
       throw new Error(`Anthropic API error: ${response.status} ${error}`);
     }
 
-    const data = await response.json() as AnthropicResponse;
+    const data = await response.json() as { content: any[] };
     
     // 查找工具调用
-    const toolUse = data.content.find((block) => block.type === 'tool_use');
+    const toolUse = data.content.find((block: any) => block.type === 'tool_use');
     if (!toolUse) {
       throw new Error('No tool call returned');
     }
 
     return {
-      id: toolUse.id!,
-      name: toolUse.name!,
+      id: toolUse.id,
+      name: toolUse.name,
       arguments: toolUse.input,
     };
   }

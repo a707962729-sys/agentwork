@@ -1,11 +1,11 @@
 # OpenClaw 网关集成测试报告
 
 ## 测试时间
-2026-03-19T16:42:32.086Z
+2026-03-22T01:08:31.463Z
 
 ## 测试环境
 - Node.js: v25.6.1
-- 项目路径：/Users/mac/Desktop/agentwork
+- 项目路径：/Users/mac/.openclaw/extensions/agentwork
 - OpenClaw 版本：待检测
 
 ## 测试概览

@@ -1,0 +1,145 @@
+# 电商卖家工作流
+
+apiVersion: company/v1
+kind: Workflow
+
+metadata:
+  id: ecommerce-seller
+  name: 电商卖家
+  description: 店铺运营自动化流程 - 选品、上架、推广、客服、数据分析
+  version: "1.0.0"
+  author: agentwork
+  tags: [ecommerce, shop, marketing]
+
+# 触发方式
+triggers:
+  - type: manual
+  - type: schedule
+    cron: "0 9 * * *"
+
+# 输入参数
+inputs:
+  platform:
+    type: string
+    default: "taobao"
+    enum: ["taobao", "tmall", "jd", "pinduoduo"]
+  category:
+    type: string
+    required: true
+    description: "产品类目"
+  budget:
+    type: number
+    default: 1000
+    description: "推广预算"
+
+# Agent 配置
+agents:
+  - id: researcher
+    type: research
+    trigger: auto
+  - id: marketer
+    type: marketing
+    trigger: auto
+  - id: support
+    type: support
+    trigger: auto
+
+# 执行步骤
+steps:
+  - id: market-research
+    name: "市场调研"
+    skill: market-research
+    agent: researcher
+    input:
+      category: "${inputs.category}"
+      platform: "${inputs.platform}"
+    checkpoint:
+      validate: "output.trends.length >= 5"
+      onError: retry
+
+  - id: product-research
+    name: "选品分析"
+    skill: product-research
+    agent: researcher
+    dependsOn: [market-research]
+    input:
+      category: "${inputs.category}"
+      trends: "${steps.market-research.output.trends}"
+    checkpoint:
+      validate: "output.products.length >= 3"
+      onError: retry
+
+  - id: supplier-selection
+    name: "供应商筛选"
+    skill: supplier-selector
+    agent: researcher
+    dependsOn: [product-research]
+    input:
+      products: "${steps.product-research.output.products}"
+    checkpoint:
+      validate: "output.suppliers.length >= 1"
+
+  - id: product-upload
+    name: "商品上架"
+    skill: product-uploader
+    agent: marketer
+    dependsOn: [supplier-selection]
+    input:
+      products: "${steps.product-research.output.products}"
+      suppliers: "${steps.supplier-selection.output.suppliers}"
+      platform: "${inputs.platform}"
+    checkpoint:
+      validate: "output.productsUploaded >= 1"
+      onError: retry
+
+  - id: marketing-campaign
+    name: "推广计划"
+    skill: marketing-planner
+    agent: marketer
+    dependsOn: [product-upload]
+    input:
+      platform: "${inputs.platform}"
+      budget: "${inputs.budget}"
+      products: "${steps.product-upload.output.products}"
+    checkpoint:
+      validate: "output.campaigns.length >= 1"
+
+  - id: ad-creation
+    name: "广告素材制作"
+    skill: ad-creator
+    agent: marketer
+    dependsOn: [marketing-campaign]
+    input:
+      campaigns: "${steps.marketing-campaign.output.campaigns}"
+    checkpoint:
+      validate: "output.assets.length >= 5"
+      onError: retry
+
+  - id: customer-service-setup
+    name: "客服配置"
+    skill: cs-configurator
+    agent: support
+    dependsOn: [product-upload]
+    input:
+      platform: "${inputs.platform}"
+      products: "${steps.product-upload.output.products}"
+    checkpoint:
+      validate: "output.channels.length >= 1"
+
+  - id: data-analysis
+    name: "数据分析"
+    skill: analytics-reporter
+    agent: marketer
+    dependsOn: [ad-creation, customer-service-setup]
+    input:
+      platform: "${inputs.platform}"
+    checkpoint:
+      validate: "output.metrics.length >= 5"
+      onError: retry
+
+# 输出
+outputs:
+  productsListed: "${steps.product-upload.output.products}"
+  campaigns: "${steps.marketing-campaign.output.campaigns}"
+  revenueForecast: "${steps.data-analysis.output.revenueForecast}"
+  customerResponseTime: "${steps.customer-service-setup.output.responseTime}"

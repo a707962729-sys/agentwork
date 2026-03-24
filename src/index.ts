@@ -8,9 +8,22 @@ export { WorkflowEngine } from './workflow/engine.js';
 export { CheckpointManager } from './workflow/checkpoint.js';
 export { SkillsRegistry } from './skills/index.js';
 export { TaskOrchestrator } from './orchestrator/index.js';
+export { AgentRunner } from './agent-engine/index.js';
+export { QueueManager } from './task-queue/index.js';
+export { RecoveryManager } from './recovery/index.js';
+export { NotificationManager, ConsoleChannel } from './notifications/index.js';
+export { ParallelExecutor, DependencyAnalyzer } from './parallel-executor/index.js';
+export { ChatAdapter, QQBotAdapter } from './entrypoints/index.js';
+export { CronScheduler, WebhookReceiver, TriggerManager } from './triggers/index.js';
 export { MemoryManagerImpl, getMemoryManager } from './memory/index.js';
 export * from './types.js';
 export * from './utils.js';
+
+// 新模块导出
+export * from './subagents/index.js';
+export * from './acp/index.js';
+export * from './sandbox/index.js';
+export * from './context/index.js';
 
 import { DatabaseManager } from './db/index.js';
 import { WorkflowEngine } from './workflow/engine.js';

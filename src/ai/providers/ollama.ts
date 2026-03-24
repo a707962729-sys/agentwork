@@ -10,16 +10,6 @@ export interface OllamaConfig {
   model?: string;
 }
 
-interface OllamaChatResponse {
-  message: {
-    content: string;
-  };
-}
-
-interface OllamaEmbedResponse {
-  embedding: number[];
-}
-
 /**
  * Ollama Provider 实现
  */
@@ -65,7 +55,7 @@ export class OllamaProvider extends AIProvider {
       throw new Error(`Ollama API error: ${response.status} ${error}`);
     }
 
-    const data = await response.json() as OllamaChatResponse;
+    const data = await response.json() as { message: { content: string } };
     return data.message.content;
   }
 
@@ -136,7 +126,7 @@ If no tool is needed, respond normally.`;
       throw new Error(`Ollama API error: ${response.status} ${error}`);
     }
 
-    const data = await response.json() as OllamaEmbedResponse;
+    const data = await response.json() as { embedding: number[] };
     return data.embedding;
   }
 }
