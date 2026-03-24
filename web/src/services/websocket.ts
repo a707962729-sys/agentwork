@@ -28,7 +28,6 @@ export const useWebSocket = () => {
         reconnectAttempts = 0
         const { addNotification } = useAppStore.getState()
         addNotification({
-          id: Math.random().toString(36).substr(2, 9),
           type: 'success',
           title: '连接成功',
           message: '已连接到实时通信服务',
@@ -71,7 +70,6 @@ export const useWebSocket = () => {
         const tasks = useAppStore.getState().tasks
         setTasks([message.data, ...tasks])
         addNotification({
-          id: Math.random().toString(36).substr(2, 9),
           type: 'info',
           title: '新任务',
           message: `任务 "${message.data.title}" 已创建`,
@@ -82,7 +80,6 @@ export const useWebSocket = () => {
       case 'task:completed':
         updateTask(message.data)
         addNotification({
-          id: Math.random().toString(36).substr(2, 9),
           type: 'success',
           title: '任务完成',
           message: `任务 "${message.data.title}" 已完成`,
@@ -96,7 +93,6 @@ export const useWebSocket = () => {
       
       case 'notification':
         addNotification({
-          id: Math.random().toString(36).substr(2, 9),
           type: message.data.type as any,
           title: message.data.title,
           message: message.data.message,
@@ -122,7 +118,6 @@ export const useWebSocket = () => {
     } else {
       const { addNotification } = useAppStore.getState()
       addNotification({
-        id: Math.random().toString(36).substr(2, 9),
         type: 'error',
         title: '连接失败',
         message: '无法连接到实时通信服务，请检查后端服务',

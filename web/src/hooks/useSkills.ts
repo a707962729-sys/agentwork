@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { skillApi } from '../services/api'
 import { useAppStore } from '../store/appStore'
@@ -11,10 +12,12 @@ export const useSkills = () => {
     queryFn: () => skillApi.getAll().then(res => res.data),
   })
 
-  // 同步到 Zustand store
-  if (data) {
-    setSkills(data.skills || [])
-  }
+  // ✅ 修复：移到 useEffect 里，避免无限循环
+  useEffect(() => {
+    if (data?.skills) {
+      setSkills(data.skills)
+    }
+  }, [data, setSkills])
 
   const installMutation = useMutation({
     mutationFn: skillApi.install,

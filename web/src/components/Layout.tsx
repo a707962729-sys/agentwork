@@ -1,66 +1,54 @@
-import { useEffect } from 'react'
-import { useAppStore } from '../store/appStore'
-import Sidebar from './Sidebar'
-import Header from './Header'
 import { useLocation } from 'react-router-dom'
+import Sidebar from './Sidebar'
+import Toast from './Toast'
 
 interface LayoutProps {
   children: React.ReactNode
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { darkMode } = useAppStore()
   const location = useLocation()
 
-  // 根据路径获取页面标题
   const getPageTitle = (path: string) => {
     const titles: Record<string, string> = {
-      '/': '仪表盘',
-      '/tasks': '任务管理',
-      '/skills': '技能管理',
-      '/workflows': '工作流管理',
-      '/agents': 'Agent 管理',
+      '/': '总览控制台',
+      '/agents': '数字员工团队',
+      '/assets': '工作成果资产库',
+      '/skills': '技能与工作流市场',
+      '/config': '员工配置演示',
       '/chat': '对话界面',
-      '/settings': '系统设置',
+      '/channels': '渠道配置',
+      '/models': '模型配置',
+      '/models/routing': '模型路由',
     }
-    
-    // 处理动态路由
-    if (path.startsWith('/tasks/')) {
-      return '任务详情'
-    }
-    
-    return titles[path] || 'AgentWork'
+    return titles[path] || 'OneAgent'
   }
-
-  // 初始化深色模式
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [darkMode])
-
-  // 移动端路由切换时自动关闭侧边栏
-  useEffect(() => {
-    if (window.innerWidth < 1024) {
-      useAppStore.getState().toggleSidebar()
-    }
-  }, [location])
 
   const pageTitle = getPageTitle(location.pathname)
 
   return (
-    <div className="min-h-screen bg-dark-bg flex">
+    <div className="min-h-screen bg-[#121418] flex">
       <Sidebar />
       
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-0">
-        <Header title={pageTitle} />
+      <div className="flex-1 flex flex-col min-h-screen ml-[260px]">
+        {/* 顶部 Header */}
+        <header className="h-14 bg-[#1E2128] border-b border-dark-border flex items-center justify-between px-6 flex-shrink-0">
+          <h1 className="text-base font-bold text-white">{pageTitle}</h1>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-[#86909C]">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#00B42A] mr-1.5 animate-live"></span>
+              系统正常
+            </span>
+          </div>
+        </header>
         
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 p-6 overflow-auto">
           {children}
         </main>
       </div>
+
+      {/* Toast 通知 */}
+      <Toast />
     </div>
   )
 }

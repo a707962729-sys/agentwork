@@ -79,7 +79,7 @@ interface AppState {
   
   // 通知
   notifications: Notification[]
-  addNotification: (notification: Notification) => void
+  addNotification: (notification: Omit<Notification, 'id'>) => void
   removeNotification: (id: string) => void
 }
 

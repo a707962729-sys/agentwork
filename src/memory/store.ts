@@ -16,7 +16,7 @@ import type { Embedder } from '../vector/index.js';
  * 记忆存储类
  */
 export class MemoryStore {
-  private db: Database.Database;
+  private db: DBType;
   private config: MemoryStoreConfig;
   private embedder: Embedder | null = null;
   private vectorStore: VectorStore | null = null;

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { taskApi } from '../services/api'
 import { useAppStore } from '../store/appStore'
@@ -9,13 +10,15 @@ export const useTasks = (filters?: { status?: string }) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['tasks', filters],
     queryFn: () => taskApi.getAll(filters).then(res => res.data),
-    refetchInterval: 5000, // 每 5 秒刷新一次
+    // 移除 refetchInterval，依赖 WebSocket 实时更新
   })
 
-  // 同步到 Zustand store
-  if (data) {
-    setTasks(data.tasks || [])
-  }
+  // ✅ 修复：移到 useEffect 里，避免无限循环
+  useEffect(() => {
+    if (data?.tasks) {
+      setTasks(data.tasks)
+    }
+  }, [data, setTasks])
 
   const createMutation = useMutation({
     mutationFn: taskApi.create,
@@ -70,13 +73,19 @@ export const useTask = (id: string) => {
     queryKey: ['task', id],
     queryFn: () => taskApi.getById(id).then(res => res.data),
     enabled: !!id,
-    refetchInterval: 2000, // 详情页刷新更频繁
+    // running 的任务每 2 秒轮询一次获取最新状态
+    refetchInterval: (query) => {
+      const task = query.state.data?.task
+      return task?.status === 'running' ? 2000 : false
+    },
   })
 
-  // 同步到 Zustand store
-  if (data?.task) {
-    setCurrentTask(data.task)
-  }
+  // ✅ 修复：移到 useEffect 里，避免无限循环
+  useEffect(() => {
+    if (data?.task) {
+      setCurrentTask(data.task)
+    }
+  }, [data, setCurrentTask])
 
   return {
     task: data?.task,
@@ -84,3 +93,5 @@ export const useTask = (id: string) => {
     error,
   }
 }
+
+export { useWebSocket } from '../services/websocket'

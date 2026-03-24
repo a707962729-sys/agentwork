@@ -37,10 +37,10 @@ export default function TaskCard({ task, compact = false }: TaskCardProps) {
     return (
       <Link 
         to={`/tasks/${task.id}`}
-        className="block p-3 bg-dark-card rounded-lg border border-dark-border hover:border-primary-500/50 transition-all group"
+        className="block p-3 bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700/50 hover:border-cyan-500/50 hover:bg-slate-800/80 transition-all duration-200 group"
       >
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-medium text-sm text-foreground group-hover:text-primary-400 transition-colors line-clamp-1">
+          <h3 className="font-medium text-sm text-slate-200 group-hover:text-cyan-400 transition-colors line-clamp-1">
             {task.title}
           </h3>
           <StatusBadge status={task.status} size="sm" />
@@ -53,31 +53,46 @@ export default function TaskCard({ task, compact = false }: TaskCardProps) {
   return (
     <Link 
       to={`/tasks/${task.id}`}
-      className="block p-4 bg-dark-card rounded-lg border border-dark-border hover:border-primary-500/50 transition-all group animate-fade-in"
+      className="group block p-5 bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 hover:border-cyan-500/50 hover:bg-slate-800/80 transition-all duration-300"
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-base text-foreground group-hover:text-primary-400 transition-colors line-clamp-1">
+      {/* 顶部区域 */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1 min-w-0 pr-3">
+          <h3 className="font-semibold text-base text-slate-100 group-hover:text-cyan-400 transition-colors line-clamp-1 mb-1">
             {task.title}
           </h3>
           {task.description && (
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+            <p className="text-sm text-slate-400 line-clamp-2 leading-relaxed">
               {task.description}
             </p>
           )}
         </div>
-        <StatusBadge status={task.status} size="sm" />
+        <div className="flex-shrink-0">
+          <StatusBadge status={task.status} size="sm" />
+        </div>
       </div>
       
-      <TaskProgress progress={task.progress} />
+      {/* 进度条 */}
+      <div className="mb-4">
+        <TaskProgress progress={task.progress} />
+      </div>
       
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-dark-border">
-        <span className="text-xs text-muted-foreground">
-          创建于 {formatDate(task.createdAt)}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {task.steps?.length || 0} 个步骤
-        </span>
+      {/* 底部信息 */}
+      <div className="flex items-center justify-between pt-3 border-t border-slate-700/50">
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{formatDate(task.createdAt)}</span>
+        </div>
+        {task.steps && task.steps.length > 0 && (
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <span>{task.steps.length} 个步骤</span>
+          </div>
+        )}
       </div>
     </Link>
   )

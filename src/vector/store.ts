@@ -13,7 +13,7 @@ import * as path from 'path';
  * 向量存储类
  */
 export class VectorStore {
-  private db: Database.Database;
+  private db: DBType;
   private config: VectorStoreConfig;
 
   constructor(config: VectorStoreConfig) {

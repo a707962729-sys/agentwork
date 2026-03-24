@@ -8,27 +8,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
-        },
-        dark: {
-          bg: '#0f172a',
-          card: '#1e293b',
-          border: '#334155',
-        }
+        primary: '#165DFF',
+        success: '#00B42A',
+        warning: '#FF7D00',
+        error: '#F53F3F',
+        idle: '#86909C',
+        'page-bg': '#121418',
+        'card-bg': '#1E2128',
+        'dark-border': 'rgba(255, 255, 255, 0.08)',
+        'dark-card': '#1E2128',
       },
-      animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-      }
+      width: {
+        'sidebar': '260px',
+      },
+      fontFamily: {
+        sans: ['Inter', 'Microsoft YaHei', 'sans-serif'],
+      },
     },
   },
   plugins: [],

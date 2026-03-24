@@ -22,7 +22,13 @@ import tasksRouter from './routes/tasks.js';
 import skillsRouter from './routes/skills.js';
 import workflowsRouter from './routes/workflows.js';
 import agentsRouter from './routes/agents.js';
+import employeesRouter from './routes/employees.js';
 import chatRouter from './routes/chat.js';
+import assetsRouter from './routes/assets.js';
+import statsRouter from './routes/stats.js';
+import modelsRouter from './routes/models.js';
+import { createExecuteRouter } from '../../src/executor/routes-execute.js';
+import { ExecutorOrchestrator } from '../../src/executor/index.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -74,12 +80,31 @@ app.locals.workflowEngine = workflowEngine;
 app.locals.orchestrator = orchestrator;
 app.locals.io = io;
 
+// 初始化 Executor Orchestrator
+const executorOrchestrator = new ExecutorOrchestrator();
+await executorOrchestrator.init(dbPath);
+executorOrchestrator.start();
+app.locals.executor = executorOrchestrator;
+
 // API 路由
 app.use('/api/v1/tasks', tasksRouter);
 app.use('/api/v1/skills', skillsRouter);
 app.use('/api/v1/workflows', workflowsRouter);
 app.use('/api/v1/agents', agentsRouter);
+app.use('/api/v1/employees', employeesRouter);
+// 初始化聊天记录数据库
+const { initChatDb } = await import('./routes/chat.js');
+initChatDb(dbPath);
+app.locals.chatDbPath = dbPath;
+
 app.use('/api/v1/chat', chatRouter);
+app.use('/api/v1/assets', assetsRouter);
+app.use('/api/v1/stats', statsRouter);
+app.use('/api/v1/models', modelsRouter);
+app.use('/api/v1/execute', (req, res, next) => {
+  (req as any).app = { locals: { executor: executorOrchestrator } };
+  createExecuteRouter({ orchestrator: executorOrchestrator })(req, res, next);
+});
 
 // 健康检查
 app.get('/api/health', (req, res) => {
