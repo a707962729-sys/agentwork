@@ -30,7 +30,7 @@ export default function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-[#121418] flex">
       <Sidebar />
       
-      <div className="flex-1 flex flex-col min-h-screen ml-[260px]">
+      <div className="flex-1 flex flex-col min-h-screen ml-0 md:ml-64">
         {/* 顶部 Header */}
         <header className="h-14 bg-[#1E2128] border-b border-dark-border flex items-center justify-between px-6 flex-shrink-0">
           <h1 className="text-base font-bold text-white">{pageTitle}</h1>

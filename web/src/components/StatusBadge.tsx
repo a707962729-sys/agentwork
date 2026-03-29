@@ -4,6 +4,7 @@ interface StatusBadgeProps {
 }
 
 export default function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
+  const safeStatus = status || 'unknown'
   const getStatusStyles = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
@@ -36,23 +37,24 @@ export default function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
     lg: 'px-2.5 py-1 text-sm',
   }
 
-  const isRunning = status === 'running' || status === 'busy'
+  const isRunning = safeStatus === 'running' || safeStatus === 'busy'
 
-  const label = status === 'running' ? '进行中' : 
-                status === 'pending' ? '待处理' :
-                status === 'completed' ? '已完成' :
-                status === 'failed' ? '失败' :
-                status === 'paused' ? '已暂停' :
-                status === 'active' ? '活跃' :
-                status === 'idle' ? '空闲' :
-                status === 'busy' ? '忙碌' :
-                status === 'offline' ? '离线' :
-                status === 'inactive' ? '未启用' :
-                status.charAt(0).toUpperCase() + status.slice(1)
+  const label = safeStatus === 'running' ? '进行中' : 
+                safeStatus === 'pending' ? '待处理' :
+                safeStatus === 'completed' ? '已完成' :
+                safeStatus === 'failed' ? '失败' :
+                safeStatus === 'paused' ? '已暂停' :
+                safeStatus === 'active' ? '活跃' :
+                safeStatus === 'idle' ? '空闲' :
+                safeStatus === 'busy' ? '忙碌' :
+                safeStatus === 'offline' ? '离线' :
+                safeStatus === 'inactive' ? '未启用' :
+                safeStatus === 'unknown' ? '未知' :
+                safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)
 
   return (
     <span 
-      className={`inline-flex items-center gap-1.5 font-medium rounded-full ${getStatusStyles(status)} ${sizeClasses[size]}`}
+      className={`inline-flex items-center gap-1.5 font-medium rounded-full ${getStatusStyles(safeStatus)} ${sizeClasses[size]}`}
     >
       {isRunning && (
         <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />

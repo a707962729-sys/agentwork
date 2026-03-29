@@ -1,3 +1,5 @@
+import { useEffect, useRef, useCallback } from 'react'
+import { io, Socket } from 'socket.io-client'
 import { useAppStore } from '../store/appStore'
 
 type WebSocketMessage = 
@@ -9,56 +11,12 @@ type WebSocketMessage =
   | { type: 'system:event'; data: any }
 
 export const useWebSocket = () => {
-  const wsUrl = `ws://${window.location.host}/ws`
-  let ws: WebSocket | null = null
-  let reconnectAttempts = 0
+  const socketRef = useRef<Socket | null>(null)
+  const reconnectAttempts = useRef(0)
   const maxReconnectAttempts = 5
-  let reconnectTimeout: NodeJS.Timeout | null = null
+  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null)
 
-  const connect = () => {
-    if (ws?.readyState === WebSocket.OPEN) {
-      return
-    }
-
-    try {
-      ws = new WebSocket(wsUrl)
-
-      ws.onopen = () => {
-        console.log('WebSocket connected')
-        reconnectAttempts = 0
-        const { addNotification } = useAppStore.getState()
-        addNotification({
-          type: 'success',
-          title: '连接成功',
-          message: '已连接到实时通信服务',
-          timestamp: new Date().toISOString(),
-        })
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data)
-          handleMessage(message)
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error)
-        }
-      }
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error)
-      }
-
-      ws.onclose = () => {
-        console.log('WebSocket disconnected')
-        attemptReconnect()
-      }
-    } catch (error) {
-      console.error('Failed to connect WebSocket:', error)
-      attemptReconnect()
-    }
-  }
-
-  const handleMessage = (message: WebSocketMessage) => {
+  const handleMessage = useCallback((message: WebSocketMessage) => {
     const { updateTask, updateAgent, addNotification, setTasks } = useAppStore.getState()
 
     switch (message.type) {
@@ -104,15 +62,15 @@ export const useWebSocket = () => {
         console.log('System event:', message.data)
         break
     }
-  }
+  }, [])
 
-  const attemptReconnect = () => {
-    if (reconnectAttempts < maxReconnectAttempts) {
-      reconnectAttempts++
-      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
-      console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`)
+  const attemptReconnect = useCallback(() => {
+    if (reconnectAttempts.current < maxReconnectAttempts) {
+      reconnectAttempts.current++
+      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000)
+      console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`)
       
-      reconnectTimeout = setTimeout(() => {
+      reconnectTimeout.current = setTimeout(() => {
         connect()
       }, delay)
     } else {
@@ -124,26 +82,100 @@ export const useWebSocket = () => {
         timestamp: new Date().toISOString(),
       })
     }
-  }
+  }, [])
 
-  const disconnect = () => {
-    if (reconnectTimeout) {
-      clearTimeout(reconnectTimeout)
-      reconnectTimeout = null
+  const connect = useCallback(() => {
+    if (socketRef.current?.connected) {
+      return
     }
-    if (ws) {
-      ws.close()
-      ws = null
-    }
-  }
 
-  const send = (data: any) => {
-    if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(data))
+    try {
+      const wsUrl = `http://${window.location.host}`
+      socketRef.current = io(wsUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 30000,
+        reconnectionAttempts: maxReconnectAttempts,
+      })
+
+      socketRef.current.on('connect', () => {
+        console.log('Socket.io connected')
+        reconnectAttempts.current = 0
+        const { addNotification } = useAppStore.getState()
+        addNotification({
+          type: 'success',
+          title: '连接成功',
+          message: '已连接到实时通信服务',
+          timestamp: new Date().toISOString(),
+        })
+      })
+
+      socketRef.current.on('task:created', (data: any) => {
+        handleMessage({ type: 'task:created', data })
+      })
+
+      socketRef.current.on('task:updated', (data: any) => {
+        handleMessage({ type: 'task:update', data })
+      })
+
+      socketRef.current.on('task:completed', (data: any) => {
+        handleMessage({ type: 'task:completed', data })
+      })
+
+      socketRef.current.on('agent:status', (data: any) => {
+        handleMessage({ type: 'agent:status', data })
+      })
+
+      socketRef.current.on('notification', (data: any) => {
+        handleMessage({ type: 'notification', data })
+      })
+
+      socketRef.current.on('disconnect', () => {
+        console.log('Socket.io disconnected')
+        attemptReconnect()
+      })
+
+      socketRef.current.on('connect_error', (error: any) => {
+        console.error('Socket.io connection error:', error)
+      })
+    } catch (error) {
+      console.error('Failed to connect Socket.io:', error)
+      attemptReconnect()
+    }
+  }, [handleMessage, attemptReconnect])
+
+  useEffect(() => {
+    connect()
+    return () => {
+      if (reconnectTimeout.current) {
+        clearTimeout(reconnectTimeout.current)
+      }
+      if (socketRef.current) {
+        socketRef.current.disconnect()
+        socketRef.current = null
+      }
+    }
+  }, [connect])
+
+  const disconnect = useCallback(() => {
+    if (reconnectTimeout.current) {
+      clearTimeout(reconnectTimeout.current)
+      reconnectTimeout.current = null
+    }
+    if (socketRef.current) {
+      socketRef.current.disconnect()
+      socketRef.current = null
+    }
+  }, [])
+
+  const send = useCallback((data: any) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('message', data)
     } else {
-      console.warn('WebSocket not connected, message not sent:', data)
+      console.warn('Socket.io not connected, message not sent:', data)
     }
-  }
+  }, [])
 
   return { connect, disconnect, send }
 }
