@@ -6,6 +6,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { parse as parseYaml } from 'yaml';
+import { Logger } from '../logging/index.js';
 
 export interface ConfigSchema {
   [key: string]: {
@@ -32,6 +33,7 @@ export class ConfigManager {
   private env: string;
   private configDir: string;
   private watchers: Map<string, () => void> = new Map();
+  private logger = new Logger();
 
   constructor(options: ConfigOptions = {}) {
     this.env = options.env || process.env.NODE_ENV || 'development';
@@ -63,8 +65,13 @@ export class ConfigManager {
       const content = await fs.readFile(filePath, 'utf-8');
       const parsed = parseYaml(content);
       this.config = this.deepMerge(this.config, parsed);
-    } catch {
-      // 文件不存在，忽略
+    } catch (err) {
+      // 文件不存在是正常的，其他错误需要记录
+      if (err instanceof Error && 'ENOENT' in err) {
+        this.logger.debug(`Config file not found: ${filePath}, skipping`);
+      } else {
+        this.logger.warn(`Failed to load config from ${filePath}: ${err instanceof Error ? err.message : err}`);
+      }
     }
   }
 
@@ -88,7 +95,9 @@ export class ConfigManager {
           case 'array':
             try {
               value = JSON.parse(value);
-            } catch {}
+            } catch (err) {
+              this.logger.warn(`Failed to parse env var ${schema.env} as ${schema.type}: ${err instanceof Error ? err.message : err}`);
+            }
             break;
         }
         
