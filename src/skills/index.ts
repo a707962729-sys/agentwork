@@ -9,6 +9,7 @@ import { parse as parseYaml } from 'yaml';
 import { Skill, SkillManifest } from '../types.js';
 import { expandHome, ensureDir } from '../utils.js';
 import { DatabaseManager } from '../db/index.js';
+import { Logger } from '../logging/index.js';
 
 export { SkillMatcher, MatchResult } from './matcher.js';
 
@@ -17,6 +18,7 @@ export class SkillsRegistry {
   private skillsDir: string;
   private openclawSkillsDir: string;
   private loadedSkills: Map<string, Skill> = new Map();
+  private logger = new Logger();
 
   constructor(db: DatabaseManager, skillsDir: string) {
     this.db = db;
@@ -64,8 +66,8 @@ export class SkillsRegistry {
           this.loadedSkills.set(skill.manifest.name, skill);
         }
       }
-    } catch (error) {
-      // 目录不存在或无法读取
+    } catch (err) {
+      this.logger.warn(`Failed to load skills from directory ${dir}: ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -210,7 +212,10 @@ export class SkillsRegistry {
 
     try {
       await fs.rm(skill.path, { recursive: true });
-    } catch {}
+    } catch (err) {
+      this.logger.error(`Failed to remove skill files at ${skill.path}: ${err instanceof Error ? err.message : err}`);
+      throw new Error(`无法删除技能文件: ${skillName}`);
+    }
 
     this.loadedSkills.delete(skillName);
   }
