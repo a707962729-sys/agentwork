@@ -11,15 +11,17 @@ import { MemoryStoreConfig, StoreOptions } from './types.js';
 import * as path from 'path';
 import { createEmbedder, VectorStore } from '../vector/index.js';
 import type { Embedder } from '../vector/index.js';
+import { Logger } from '../logging/index.js';
 
 /**
  * 记忆存储类
  */
 export class MemoryStore {
-  private db: DBType;
+  private db: any;
   private config: MemoryStoreConfig;
   private embedder: Embedder | null = null;
   private vectorStore: VectorStore | null = null;
+  private logger = new Logger();
 
   constructor(config: MemoryStoreConfig, openaiApiKey?: string) {
     this.config = {
@@ -95,7 +97,7 @@ export class MemoryStore {
       try {
         embedding = await this.embedder.embed(content);
       } catch (error) {
-        console.warn('Failed to generate embedding:', error);
+        this.logger.warn(`Failed to generate embedding: ${error instanceof Error ? error.message : error}`);
       }
     }
 
@@ -130,7 +132,7 @@ export class MemoryStore {
           }
         });
       } catch (error) {
-        console.warn('Failed to store vector:', error);
+        this.logger.warn(`Failed to store vector: ${error instanceof Error ? error.message : error}`);
       }
     }
 

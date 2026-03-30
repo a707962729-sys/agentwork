@@ -8,6 +8,7 @@ import { SearchOptions, RecallContext, VectorSimilarityResult } from './types.js
 import { MemoryStore } from './store.js';
 import { createEmbedder, createVectorSearch } from '../vector/index.js';
 import type { Embedder, VectorSearch as VectorSearchInterface } from '../vector/index.js';
+import { Logger } from '../logging/index.js';
 
 /**
  * 记忆搜索类
@@ -17,6 +18,7 @@ export class MemorySearch {
   private embedder: Embedder | null = null;
   private vectorSearchClient: VectorSearchInterface | null = null;
   private enableVectorSearch: boolean;
+  private logger = new Logger();
 
   constructor(store: MemoryStore, enableVectorSearch: boolean = false, openaiApiKey?: string) {
     this.store = store;
@@ -185,7 +187,7 @@ export class MemorySearch {
       results.sort((a, b) => b.score - a.score);
       return results;
     } catch (error) {
-      console.warn('Vector search failed, falling back to keyword search:', error);
+      this.logger.warn(`Vector search failed, falling back to keyword search: ${error instanceof Error ? error.message : error}`);
       return this.keywordSearch(query, memories, options);
     }
   }
