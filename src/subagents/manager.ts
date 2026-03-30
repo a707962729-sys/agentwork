@@ -12,6 +12,7 @@ import {
 } from './types.js';
 import { DatabaseManager } from '../db/index.js';
 import { Skill } from '../types.js';
+import { Logger } from '../logging/index.js';
 import * as crypto from 'crypto';
 
 /**
@@ -37,6 +38,7 @@ export class SubAgentManager {
   private mainAgentTools: string[] = [];
   private mainAgentModel?: string;
   private mainAgentSystemPrompt?: string;
+  private logger = new Logger();
 
   constructor(db: DatabaseManager, config: SubAgentManagerConfig) {
     this.db = db;
@@ -382,7 +384,7 @@ export class SubAgentManager {
         return '[AI 请求超时]';
       }
       
-      console.error('AI call error:', error.message);
+      this.logger.error(`AI call error: ${error.message}`);
       return `[AI 调用失败: ${error.message}]`;
     }
   }
