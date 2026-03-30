@@ -8,6 +8,9 @@
 
 import { Router, Request, Response } from 'express';
 import { ExecutorOrchestrator } from '../executor/index.js';
+import { Logger } from '../logging/index.js';
+
+const logger = new Logger();
 
 export interface ExecuteRouterOptions {
   orchestrator: ExecutorOrchestrator;
@@ -50,7 +53,7 @@ export function createExecuteRouter(opts: ExecuteRouterOptions): Router {
         createdAt: task.createdAt,
       });
     } catch (err) {
-      console.error('[execute/agent] error:', err);
+      logger.error(`[execute/agent] error: ${err instanceof Error ? err.message : err}`);
       res.status(500).json({ error: '提交任务失败', detail: String(err) });
     }
   });
@@ -113,7 +116,7 @@ export function createExecuteRouter(opts: ExecuteRouterOptions): Router {
       orchestrator.registerAgent(agent);
       res.status(201).json({ id: agent.id, name: agent.name, status: 'registered' });
     } catch (err) {
-      console.error('[execute/agents] error:', err);
+      logger.error(`[execute/agents] error: ${err instanceof Error ? err.message : err}`);
       res.status(500).json({ error: '注册 Agent 失败', detail: String(err) });
     }
   });

@@ -16,6 +16,7 @@ import { TaskOrchestrator } from '../orchestrator/index.js';
 import { createTasksRouter } from './tasks.js';
 import { createStatsRouter } from './stats.js';
 import { createWorkflowsRouter } from './workflows.js';
+import { Logger } from '../logging/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +25,7 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 
 export class APIServer {
+  private logger = new Logger();
   private app: Application;
   private port: number;
   private db: DatabaseManager;
@@ -73,7 +75,7 @@ export class APIServer {
       const content = require('fs').readFileSync(configPath, 'utf-8');
       this.config = yaml.parse(content) || {};
     } catch {
-      console.warn('⚠️ No config.yaml found, using defaults');
+      this.logger.warn('⚠️ No config.yaml found, using defaults');
     }
   }
 
@@ -103,12 +105,12 @@ export class APIServer {
           await this.workflowEngine.loadFromFile(path.join(workflowsDir, file));
           loaded++;
         } catch (err: any) {
-          console.warn(`⚠️ Failed to load workflow ${file}: ${err.message}`);
+          this.logger.warn(`⚠️ Failed to load workflow ${file}: ${err.message}`);
         }
       }
       return loaded;
     } catch (err: any) {
-      console.warn(`⚠️ Workflows directory not found: ${err.message}`);
+      this.logger.warn(`⚠️ Workflows directory not found: ${err.message}`);
       return 0;
     }
   }
@@ -123,7 +125,7 @@ export class APIServer {
 
     // 日志中间件
     this.app.use((req: Request, res: Response, next: NextFunction) => {
-      console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+      this.logger.info(`${new Date().toISOString()} ${req.method} ${req.path}`);
       next();
     });
   }
@@ -177,7 +179,7 @@ export class APIServer {
     if (!this.initialized) {
       await this.skills.init();
       this.initialized = true;
-      console.log(`🔧 Skills registry initialized: ${this.skills.list().length} skills loaded`);
+      this.logger.info(`🔧 Skills registry initialized: ${this.skills.list().length} skills loaded`);
     }
     
     // 加载工作流
@@ -185,13 +187,13 @@ export class APIServer {
     
     return new Promise((resolve, reject) => {
       this.app.listen(this.port, () => {
-        console.log(`🚀 AgentWork API Server running on port ${this.port}`);
-        console.log(`📊 Dashboard: http://localhost:${this.port}`);
-        console.log(`📋 API Docs: http://localhost:${this.port}`);
-        console.log(`📁 Loaded ${workflowCount} workflows`);
+        this.logger.info(`🚀 AgentWork API Server running on port ${this.port}`);
+        this.logger.info(`📊 Dashboard: http://localhost:${this.port}`);
+        this.logger.info(`📋 API Docs: http://localhost:${this.port}`);
+        this.logger.info(`📁 Loaded ${workflowCount} workflows`);
         resolve();
       }).on('error', (error: Error) => {
-        console.error(`Failed to start server: ${error.message}`);
+        this.logger.error(`Failed to start server: ${error.message}`);
         reject(error);
       });
     });
@@ -202,7 +204,7 @@ export class APIServer {
       if (this.app) {
         // Express doesn't have close, we need to get the server instance
         // For now, just resolve
-        console.log('Server stopped');
+        this.logger.info('Server stopped');
         resolve();
       } else {
         resolve();

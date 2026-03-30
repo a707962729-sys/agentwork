@@ -6,6 +6,9 @@
 import { Command } from 'commander';
 import { AgentWork, getAgentWork } from './index.js';
 import { SandboxExecutor } from './sandbox/index.js';
+import { Logger } from './logging/index.js';
+
+const logger = new Logger();
 
 const program = new Command();
 
@@ -34,9 +37,9 @@ taskCmd
       workflowId: options.workflow
     });
     
-    console.log(`✅ 任务已创建: ${task.id}`);
-    console.log(`   标题: ${task.title}`);
-    console.log(`   类型: ${task.type}`);
+    logger.info(`✅ 任务已创建: ${task.id}`);
+    logger.info(`   标题: ${task.title}`);
+    logger.info(`   类型: ${task.type}`);
   });
 
 taskCmd
@@ -48,17 +51,17 @@ taskCmd
     const tasks = app.getOrchestrator().listTasks(parseInt(options.limit));
     
     if (tasks.length === 0) {
-      console.log('暂无任务');
+      logger.info('暂无任务');
       return;
     }
     
-    console.log('\n任务列表:');
-    console.log('─'.repeat(80));
+    logger.info('\n任务列表:');
+    logger.info('─'.repeat(80));
     for (const task of tasks) {
       const status = getStatusEmoji(task.status);
-      console.log(`${status} ${task.id.slice(0, 8)} | ${task.title} | ${task.status}`);
+      logger.info(`${status} ${task.id.slice(0, 8)} | ${task.title} | ${task.status}`);
     }
-    console.log('─'.repeat(80));
+    logger.info('─'.repeat(80));
   });
 
 taskCmd
@@ -69,26 +72,26 @@ taskCmd
     const task = app.getOrchestrator().getTask(taskId);
     
     if (!task) {
-      console.log(`❌ 任务不存在: ${taskId}`);
+      logger.info(`❌ 任务不存在: ${taskId}`);
       return;
     }
     
-    console.log('\n任务详情:');
-    console.log('─'.repeat(50));
-    console.log(`ID: ${task.id}`);
-    console.log(`标题: ${task.title}`);
-    console.log(`类型: ${task.type}`);
-    console.log(`状态: ${task.status}`);
-    console.log(`创建时间: ${task.createdAt.toLocaleString()}`);
+    logger.info('\n任务详情:');
+    logger.info('─'.repeat(50));
+    logger.info(`ID: ${task.id}`);
+    logger.info(`标题: ${task.title}`);
+    logger.info(`类型: ${task.type}`);
+    logger.info(`状态: ${task.status}`);
+    logger.info(`创建时间: ${task.createdAt.toLocaleString()}`);
     
     if (task.steps.length > 0) {
-      console.log('\n执行步骤:');
+      logger.info('\n执行步骤:');
       for (const step of task.steps) {
         const status = getStatusEmoji(step.status);
-        console.log(`  ${status} ${step.orderId + 1}. ${step.title} [${step.skill}]`);
+        logger.info(`  ${status} ${step.orderId + 1}. ${step.title} [${step.skill}]`);
       }
     }
-    console.log('─'.repeat(50));
+    logger.info('─'.repeat(50));
   });
 
 taskCmd
@@ -98,25 +101,25 @@ taskCmd
     const app = await getAgentWork();
     const orchestrator = app.getOrchestrator();
     
-    console.log(`🚀 开始执行任务: ${taskId}`);
+    logger.info(`🚀 开始执行任务: ${taskId}`);
     
     // 监听事件
     orchestrator.on('step:started', (event) => {
-      console.log(`  ⏳ 步骤开始: ${event.data.title}`);
+      logger.info(`  ⏳ 步骤开始: ${event.data.title}`);
     });
     
     orchestrator.on('step:completed', (event) => {
-      console.log(`  ✅ 步骤完成: ${event.data.stepId}`);
+      logger.info(`  ✅ 步骤完成: ${event.data.stepId}`);
     });
     
     orchestrator.on('task:completed', () => {
-      console.log(`\n🎉 任务执行完成!`);
+      logger.info(`\n🎉 任务执行完成!`);
     });
     
     try {
       await orchestrator.execute(taskId);
     } catch (error: any) {
-      console.log(`\n❌ 执行失败: ${error.message}`);
+      logger.info(`\n❌ 执行失败: ${error.message}`);
     }
   });
 
@@ -131,16 +134,16 @@ workflowCmd
     const workflows = app.getWorkflowEngine().listWorkflows();
     
     if (workflows.length === 0) {
-      console.log('暂无工作流');
+      logger.info('暂无工作流');
       return;
     }
     
-    console.log('\n工作流列表:');
-    console.log('─'.repeat(60));
+    logger.info('\n工作流列表:');
+    logger.info('─'.repeat(60));
     for (const wf of workflows) {
-      console.log(`📋 ${wf.metadata.id} | ${wf.metadata.name}`);
+      logger.info(`📋 ${wf.metadata.id} | ${wf.metadata.name}`);
     }
-    console.log('─'.repeat(60));
+    logger.info('─'.repeat(60));
   });
 
 workflowCmd
@@ -159,14 +162,14 @@ workflowCmd
       }
     }
     
-    console.log(`🚀 运行工作流: ${workflowId}`);
-    console.log(`   参数: ${JSON.stringify(inputs)}`);
+    logger.info(`🚀 运行工作流: ${workflowId}`);
+    logger.info(`   参数: ${JSON.stringify(inputs)}`);
     
     try {
       const run = await engine.run(workflowId, inputs);
-      console.log(`\n✅ 工作流已启动: ${run.id}`);
+      logger.info(`\n✅ 工作流已启动: ${run.id}`);
     } catch (error: any) {
-      console.log(`\n❌ 启动失败: ${error.message}`);
+      logger.info(`\n❌ 启动失败: ${error.message}`);
     }
   });
 
@@ -179,9 +182,9 @@ workflowCmd
     
     try {
       const workflow = await engine.loadFromFile(filepath);
-      console.log(`✅ 已安装工作流: ${workflow.metadata.name}`);
+      logger.info(`✅ 已安装工作流: ${workflow.metadata.name}`);
     } catch (error: any) {
-      console.log(`❌ 安装失败: ${error.message}`);
+      logger.info(`❌ 安装失败: ${error.message}`);
     }
   });
 
@@ -196,16 +199,16 @@ skillCmd
     const skills = app.getSkillsRegistry().list();
     
     if (skills.length === 0) {
-      console.log('暂无技能');
+      logger.info('暂无技能');
       return;
     }
     
-    console.log('\n技能列表:');
-    console.log('─'.repeat(60));
+    logger.info('\n技能列表:');
+    logger.info('─'.repeat(60));
     for (const skill of skills) {
-      console.log(`🔧 ${skill.manifest.name} | ${skill.manifest.description}`);
+      logger.info(`🔧 ${skill.manifest.name} | ${skill.manifest.description}`);
     }
-    console.log('─'.repeat(60));
+    logger.info('─'.repeat(60));
   });
 
 skillCmd
@@ -217,9 +220,9 @@ skillCmd
     
     try {
       const skill = await registry.install(source);
-      console.log(`✅ 已安装技能: ${skill.manifest.name}`);
+      logger.info(`✅ 已安装技能: ${skill.manifest.name}`);
     } catch (error: any) {
-      console.log(`❌ 安装失败: ${error.message}`);
+      logger.info(`❌ 安装失败: ${error.message}`);
     }
   });
 
@@ -231,13 +234,13 @@ skillCmd
     const skills = app.getSkillsRegistry().search(query);
     
     if (skills.length === 0) {
-      console.log('未找到匹配的技能');
+      logger.info('未找到匹配的技能');
       return;
     }
     
-    console.log('\n搜索结果:');
+    logger.info('\n搜索结果:');
     for (const skill of skills) {
-      console.log(`  🔧 ${skill.manifest.name} - ${skill.manifest.description}`);
+      logger.info(`  🔧 ${skill.manifest.name} - ${skill.manifest.description}`);
     }
   });
 
@@ -266,18 +269,18 @@ sandboxCmd
   .option('-n, --network <mode>', '网络访问模式 (none|restricted|full)', 'restricted')
   .option('-e, --env <vars...>', '环境变量 (KEY=VALUE)')
   .action(async (script, options) => {
-    console.log(`🔒 沙箱执行: ${script}`);
-    console.log(`   超时: ${options.timeout}ms`);
-    console.log(`   内存限制: ${options.memory}MB`);
-    console.log(`   网络模式: ${options.network}`);
+    logger.info(`🔒 沙箱执行: ${script}`);
+    logger.info(`   超时: ${options.timeout}ms`);
+    logger.info(`   内存限制: ${options.memory}MB`);
+    logger.info(`   网络模式: ${options.network}`);
     
     const executor = new SandboxExecutor();
     const result = await executor.executeScript(script, [], { timeout: parseInt(options.timeout) });
     
-    console.log(`\n${result.success ? '✅' : '❌'} 执行完成`);
-    if (result.stdout) console.log(`\n输出:\n${result.stdout}`);
-    if (result.stderr) console.log(`\n错误:\n${result.stderr}`);
-    console.log(`\n耗时: ${result.durationMs}ms`);
+    logger.info(`\n${result.success ? '✅' : '❌'} 执行完成`);
+    if (result.stdout) logger.info(`\n输出:\n${result.stdout}`);
+    if (result.stderr) logger.info(`\n错误:\n${result.stderr}`);
+    logger.info(`\n耗时: ${result.durationMs}ms`);
   });
 
 sandboxCmd
@@ -286,17 +289,17 @@ sandboxCmd
   .option('-l, --language <lang>', '代码语言 (javascript|typescript|python|shell)', 'javascript')
   .option('-t, --timeout <ms>', '超时时间 (ms)', '30000')
   .action(async (code, options) => {
-    console.log(`🔒 沙箱代码执行`);
-    console.log(`   语言: ${options.language}`);
-    console.log(`   代码: ${code.substring(0, 100)}${code.length > 100 ? '...' : ''}`);
+    logger.info(`🔒 沙箱代码执行`);
+    logger.info(`   语言: ${options.language}`);
+    logger.info(`   代码: ${code.substring(0, 100)}${code.length > 100 ? '...' : ''}`);
     
     const executor = new SandboxExecutor();
     const result = await executor.executeCode(code, options.language, { timeout: parseInt(options.timeout) });
     
-    console.log(`\n${result.success ? '✅' : '❌'} 执行完成`);
-    if (result.stdout) console.log(`\n输出:\n${result.stdout}`);
-    if (result.stderr) console.log(`\n错误:\n${result.stderr}`);
-    console.log(`\n耗时: ${result.durationMs}ms`);
+    logger.info(`\n${result.success ? '✅' : '❌'} 执行完成`);
+    if (result.stdout) logger.info(`\n输出:\n${result.stdout}`);
+    if (result.stderr) logger.info(`\n错误:\n${result.stderr}`);
+    logger.info(`\n耗时: ${result.durationMs}ms`);
   });
 
 // ==================== ACP 命令 ====================
@@ -308,10 +311,10 @@ acpCmd
   .option('-n, --name <name>', '服务器名称', 'AgentWork')
   .option('--timeout <ms>', '请求超时时间', '120000')
   .action(async (options) => {
-    console.log(`🚀 启动 ACP 服务器...`);
-    console.log(`   名称: ${options.name}`);
-    console.log(`   超时: ${options.timeout}ms`);
-    console.log(`   模式: stdio`);
+    logger.info(`🚀 启动 ACP 服务器...`);
+    logger.info(`   名称: ${options.name}`);
+    logger.info(`   超时: ${options.timeout}ms`);
+    logger.info(`   模式: stdio`);
     
     try {
       const { ACPServer } = await import('./acp/server.js');
@@ -328,10 +331,10 @@ acpCmd
         timeout: parseInt(options.timeout)
       });
       
-      console.log(`\n✅ ACP 服务器已启动，等待连接...`);
+      logger.info(`\n✅ ACP 服务器已启动，等待连接...`);
       await server.start();
     } catch (error: any) {
-      console.error(`❌ 启动失败: ${error.message}`);
+      logger.error(`❌ 启动失败: ${error.message}`);
       process.exit(1);
     }
   });
@@ -340,14 +343,14 @@ acpCmd
   .command('capabilities')
   .description('显示 ACP 能力信息')
   .action(() => {
-    console.log('\nACP 能力:');
-    console.log('─'.repeat(50));
-    console.log('  ✅ streaming   - 流式响应');
-    console.log('  ✅ tools       - 工具调用');
-    console.log('  ✅ skills      - 技能系统');
-    console.log('  ✅ subagents   - 子代理');
-    console.log('  ✅ memory      - 记忆系统');
-    console.log('─'.repeat(50));
+    logger.info('\nACP 能力:');
+    logger.info('─'.repeat(50));
+    logger.info('  ✅ streaming   - 流式响应');
+    logger.info('  ✅ tools       - 工具调用');
+    logger.info('  ✅ skills      - 技能系统');
+    logger.info('  ✅ subagents   - 子代理');
+    logger.info('  ✅ memory      - 记忆系统');
+    logger.info('─'.repeat(50));
   });
 
 // ==================== Subagent 命令 ====================
@@ -357,11 +360,11 @@ subagentCmd
   .command('list')
   .description('列出所有可用子代理')
   .action(async () => {
-    console.log('\n可用子代理:');
-    console.log('─'.repeat(60));
-    console.log('  🤖 general-purpose  - 通用子代理，继承主代理能力');
-    console.log('─'.repeat(60));
-    console.log('\n💡 提示: 在配置文件中添加自定义子代理');
+    logger.info('\n可用子代理:');
+    logger.info('─'.repeat(60));
+    logger.info('  🤖 general-purpose  - 通用子代理，继承主代理能力');
+    logger.info('─'.repeat(60));
+    logger.info('\n💡 提示: 在配置文件中添加自定义子代理');
   });
 
 subagentCmd
@@ -369,18 +372,18 @@ subagentCmd
   .description('调用子代理执行任务')
   .option('-c, --context <json>', '上下文 (JSON)', '{}')
   .action(async (name, task, options) => {
-    console.log(`🤖 调用子代理: ${name}`);
-    console.log(`   任务: ${task}`);
+    logger.info(`🤖 调用子代理: ${name}`);
+    logger.info(`   任务: ${task}`);
     
     try {
       const { SubAgentManager } = await import('./subagents/manager.js');
       const { DatabaseManager } = await import('./db/index.js');
       
       // 简化演示
-      console.log(`\n⚠️ 子代理调用需要完整初始化`);
-      console.log(`   请通过 AgentWork API 使用子代理功能`);
+      logger.info(`\n⚠️ 子代理调用需要完整初始化`);
+      logger.info(`   请通过 AgentWork API 使用子代理功能`);
     } catch (error: any) {
-      console.error(`❌ 调用失败: ${error.message}`);
+      logger.error(`❌ 调用失败: ${error.message}`);
     }
   });
 
@@ -388,20 +391,20 @@ subagentCmd
   .command('info <name>')
   .description('显示子代理详情')
   .action(async (name) => {
-    console.log(`\n子代理详情: ${name}`);
-    console.log('─'.repeat(50));
+    logger.info(`\n子代理详情: ${name}`);
+    logger.info('─'.repeat(50));
     
     if (name === 'general-purpose') {
-      console.log('  名称: general-purpose');
-      console.log('  描述: 通用子代理，继承主代理的能力');
-      console.log('  功能:');
-      console.log('    - 继承主代理的所有技能和工具');
-      console.log('    - 支持委派复杂任务');
-      console.log('    - Context 隔离');
+      logger.info('  名称: general-purpose');
+      logger.info('  描述: 通用子代理，继承主代理的能力');
+      logger.info('  功能:');
+      logger.info('    - 继承主代理的所有技能和工具');
+      logger.info('    - 支持委派复杂任务');
+      logger.info('    - Context 隔离');
     } else {
-      console.log(`  ❌ 未找到子代理: ${name}`);
+      logger.info(`  ❌ 未找到子代理: ${name}`);
     }
-    console.log('─'.repeat(50));
+    logger.info('─'.repeat(50));
   });
 
 // 解析命令

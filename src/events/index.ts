@@ -3,6 +3,8 @@
  * 发布-订阅模式，支持异步事件处理
  */
 
+import { Logger } from '../logging/index.js';
+
 export type EventHandler<T = any> = (event: T) => void | Promise<void>;
 
 export interface EventSubscription {
@@ -23,6 +25,7 @@ export interface EventMetrics {
  * 类型安全的事件总线
  */
 export class EventBus {
+  private logger = new Logger();
   private subscriptions: Map<string, EventSubscription[]> = new Map();
   private metrics: EventMetrics = {
     published: 0,
@@ -110,7 +113,7 @@ export class EventBus {
     // 异步执行，不等待
     this.executeHandlers(eventType, event).catch(error => {
       this.metrics.errors++;
-      console.error(`Event handler error for ${eventType}:`, error);
+      this.logger.error(`Event handler error for ${eventType}: ${error instanceof Error ? error.message : error}`);
     });
   }
 
@@ -133,7 +136,7 @@ export class EventBus {
         }
       } catch (error) {
         this.metrics.errors++;
-        console.error(`Event handler error for ${eventType}:`, error);
+        this.logger.error(`Event handler error for ${eventType}: ${error instanceof Error ? error.message : error}`);
       }
     }
 

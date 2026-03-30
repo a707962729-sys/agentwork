@@ -1,6 +1,7 @@
 import type { TaskOrchestrator } from '../orchestrator/index.js';
 import type { WorkflowDefinition } from '../types.js';
 import http from 'http';
+import { Logger } from '../logging/index.js';
 
 export interface WebhookConfig {
   path: string;
@@ -10,6 +11,7 @@ export interface WebhookConfig {
 }
 
 export class WebhookReceiver {
+  private logger = new Logger();
   private orchestrator: TaskOrchestrator;
   private webhooks: Map<string, WebhookConfig> = new Map();
   private server?: http.Server;
@@ -53,7 +55,7 @@ export class WebhookReceiver {
       });
 
       this.server.listen(this.port, () => {
-        console.log(`[WebhookReceiver] Listening on port ${this.port}`);
+        this.logger.info(`[WebhookReceiver] Listening on port ${this.port}`);
         resolve();
       });
     });
@@ -104,7 +106,7 @@ export class WebhookReceiver {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, taskId: task.id }));
 
-      console.log(`[WebhookReceiver] Triggered workflow ${webhook.workflowId}`);
+      this.logger.debug(`[WebhookReceiver] Triggered workflow ${webhook.workflowId}`);
     } catch (error: any) {
       res.writeHead(500);
       res.end(JSON.stringify({ error: error.message }));

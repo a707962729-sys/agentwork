@@ -2,6 +2,9 @@ import { Router, Request, Response } from 'express';
 import { DatabaseManager } from '../db/index.js';
 import { WorkflowEngine } from '../workflow/engine.js';
 import { APIResponse, WorkflowItem, WorkflowRunResponse, RunWorkflowRequest } from './types.js';
+import { Logger } from '../logging/index.js';
+
+const logger = new Logger();
 
 export function createWorkflowsRouter(
   db: DatabaseManager,
@@ -110,11 +113,11 @@ export function createWorkflowsRouter(
       const { id } = req.params;
       const { inputs } = req.body as RunWorkflowRequest;
 
-      console.log(`[API] Running workflow: ${id}, inputs:`, JSON.stringify(inputs));
+      logger.debug(`[API] Running workflow: ${id}, inputs: ${JSON.stringify(inputs)}`);
       
       const run = await engine.run(id, inputs || {});
       
-      console.log(`[API] Workflow run created: ${run.id}, status: ${run.status}`);
+      logger.debug(`[API] Workflow run created: ${run.id}, status: ${run.status}`);
 
       const response: APIResponse<WorkflowRunResponse> = {
         success: true,
@@ -128,7 +131,7 @@ export function createWorkflowsRouter(
 
       res.status(202).json(response);
     } catch (error: any) {
-      console.error(`[API] Error running workflow:`, error);
+      logger.error(`[API] Error running workflow: ${error instanceof Error ? error.message : error}`);
       const response: APIResponse = {
         success: false,
         error: 'Failed to start workflow',

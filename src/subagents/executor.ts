@@ -14,6 +14,7 @@ import {
 import { AgentRunner } from '../agent-engine/AgentRunner.js';
 import { DatabaseManager } from '../db/index.js';
 import { Skill } from '../types.js';
+import { Logger } from '../logging/index.js';
 import * as crypto from 'crypto';
 
 /**
@@ -58,6 +59,7 @@ export interface ExecutionSummary {
  * 4. 返回结果摘要
  */
 export class SubAgentExecutor {
+  private logger = new Logger();
   private db: DatabaseManager;
   private config: ExecutorConfig;
   private activeContexts: Map<string, SubAgentContext> = new Map();
@@ -433,7 +435,7 @@ export class SubAgentExecutor {
         try {
           await middleware.onError(error, context);
         } catch (e) {
-          console.error(`Middleware ${middleware.name} error handler failed:`, e);
+          this.logger.error(`Middleware ${middleware.name} error handler failed: ${e instanceof Error ? e.message : e}`);
         }
       }
     }

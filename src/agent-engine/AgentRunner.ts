@@ -11,6 +11,7 @@ import * as path from 'path';
 import * as yaml from 'yaml';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { Logger } from '../logging/index.js';
 
 // ESM 模块中获取 __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -31,6 +32,7 @@ export interface AgentRunnerConfig {
 }
 
 export class AgentRunner {
+  private logger = new Logger();
   private config: AgentRunnerConfig;
   private db: DatabaseManager;
   private providers: Map<string, AIProvider> = new Map();
@@ -126,7 +128,7 @@ export class AgentRunner {
     
     if (!provider) {
       // 没有 API key，返回模拟结果
-      console.warn('No AI API configured, returning mock result');
+      this.logger.warn('No AI API configured, returning mock result');
       return this.getMockResult(skill, input);
     }
     
@@ -137,10 +139,10 @@ export class AgentRunner {
    * 调用 AI API
    */
   private async callAI(provider: AIProvider, prompt: string): Promise<any> {
-    console.log(`    📡 Calling AI: ${provider.name} / ${provider.model}`);
+    this.logger.debug(`    📡 Calling AI: ${provider.name} / ${provider.model}`);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.log(`    ⏱️ AI call timeout after ${this.config.timeout}ms`);
+      this.logger.warn(`    ⏱️ AI call timeout after ${this.config.timeout}ms`);
       controller.abort();
     }, this.config.timeout);
     
@@ -170,7 +172,7 @@ export class AgentRunner {
       });
       
       clearTimeout(timeoutId);
-      console.log(`    ✅ AI response received: ${response.status}`);
+      this.logger.debug(`    ✅ AI response received: ${response.status}`);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -179,7 +181,7 @@ export class AgentRunner {
       
       const data = await response.json() as any;
       const content = data.choices?.[0]?.message?.content || '';
-      console.log(`    📝 AI content length: ${content.length} chars`);
+      this.logger.debug(`    📝 AI content length: ${content.length} chars`);
       
       // 解析 JSON 结果
       return this.parseAIResponse(content);
@@ -362,7 +364,7 @@ export class AgentRunner {
         return await this.executeSkill(skill, input, context);
       } catch (error) {
         lastError = error as Error;
-        console.warn(`Attempt ${i + 1} failed:`, error);
+        this.logger.warn(`Attempt ${i + 1} failed: ${error instanceof Error ? error.message : error}`);
         
         if (i < maxRetries) {
           await new Promise(r => setTimeout(r, 1000 * (i + 1)));

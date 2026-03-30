@@ -1,7 +1,10 @@
 import { ChatAdapter, type ChatMessage, type ChatResponse } from './ChatAdapter.js';
 import type { TaskOrchestrator } from '../orchestrator/index.js';
+import { Logger } from '../logging/index.js';
 
 export class QQBotAdapter extends ChatAdapter {
+  private logger = new Logger();
+
   constructor(orchestrator: TaskOrchestrator) {
     super(orchestrator, 'qqbot');
   }
@@ -42,6 +45,6 @@ export class QQBotAdapter extends ChatAdapter {
   async sendMessage(msg: ChatResponse): Promise<void> {
     // 这里应该调用 QQ 消息发送 API
     // 在 OpenClaw 环境中会通过 message 工具发送
-    console.log(`[QQBot] ${msg.message}`);
+    this.logger.debug(`[QQBot] ${msg.message}`);
   }
 }

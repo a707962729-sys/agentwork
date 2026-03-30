@@ -9,6 +9,7 @@ import { TemplateRenderer } from '../templates/index.js';
 import { ScriptExecutor } from '../executor/index.js';
 import { DatabaseManager } from '../db/index.js';
 import { Skill } from '../types.js';
+import { Logger } from '../logging/index.js';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
@@ -17,6 +18,7 @@ import * as fs from 'fs/promises';
  * 集成智能匹配、缓存、模板渲染
  */
 export class EnhancedAgentRunner {
+  private logger = new Logger();
   private skillsRegistry: SkillsRegistry;
   private skillMatcher: SkillMatcher;
   private cache: FileCache;
@@ -59,7 +61,7 @@ export class EnhancedAgentRunner {
       };
     }
     
-    console.log(`Matched skill: ${matchResult.skill.manifest.name} (score: ${matchResult.score})`);
+    this.logger.debug(`Matched skill: ${matchResult.skill.manifest.name} (score: ${matchResult.score})`);
     
     // 3. 执行技能
     return this.executeSkill(matchResult.skill, input);
@@ -78,7 +80,7 @@ export class EnhancedAgentRunner {
     // 尝试从缓存获取
     const cached = await this.cache.get(cacheKey);
     if (cached) {
-      console.log(`Cache hit for skill: ${skill.manifest.name}`);
+      this.logger.debug(`Cache hit for skill: ${skill.manifest.name}`);
       return cached;
     }
     

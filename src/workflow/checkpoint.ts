@@ -4,6 +4,7 @@
 
 import { TaskStep, CheckpointResult } from '../types.js';
 import { evaluateExpression } from '../utils.js';
+import { Logger } from '../logging/index.js';
 
 /**
  * AI Provider 接口
@@ -15,6 +16,7 @@ interface AIProvider {
 }
 
 export class CheckpointManager {
+  private logger = new Logger();
   private defaultTimeout: number = 30000;
 
   /**
@@ -48,7 +50,7 @@ export class CheckpointManager {
   private async callAIValidate(prompt: string, output: any): Promise<boolean> {
     const provider = this.getAvailableProvider();
     if (!provider) {
-      console.warn('No AI provider available for validation');
+      this.logger.warn('No AI provider available for validation');
       return true;
     }
     
@@ -92,7 +94,7 @@ export class CheckpointManager {
       
     } catch (error: any) {
       clearTimeout(timeoutId);
-      console.error('AI validation error:', error.message);
+      this.logger.error(`AI validation error: ${error.message}`);
       return true; // 出错时默认通过
     }
   }

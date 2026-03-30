@@ -10,8 +10,10 @@ import { AgentRunner } from '../agent-engine/index.js';
 import { QueueManager } from '../task-queue/index.js';
 import { RecoveryManager } from '../recovery/index.js';
 import { v4 as uuid } from 'uuid';
+import { Logger } from '../logging/index.js';
 
 export class TaskOrchestrator {
+  private logger = new Logger();
   private db: DatabaseManager;
   private workflowEngine: WorkflowEngine;
   private skills: SkillsRegistry;
@@ -184,7 +186,7 @@ export class TaskOrchestrator {
 
     // 从中断点继续执行
     // 这里简化处理，实际应该根据 restored.currentIndex 继续
-    console.log(`Recovered run ${runId} at step index ${restored.currentIndex}`);
+    this.logger.debug(`Recovered run ${runId} at step index ${restored.currentIndex}`);
   }
 
   /**

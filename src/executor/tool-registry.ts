@@ -12,8 +12,11 @@ import { fileReadTool } from './built-in-tools/file-tool.js';
 import { fileWriteTool } from './built-in-tools/file-write-tool.js';
 import { bashTool } from './built-in-tools/bash-tool.js';
 import { webSearchTool } from './built-in-tools/web-search-tool.js';
+import { Logger } from '../logging/index.js';
 
 // ============ 全局工具注册表（供外部扩展）============
+
+const logger = new Logger();
 
 export class GlobalToolRegistry {
   private static instance = new Map<string, ToolDefinition>();
@@ -69,7 +72,7 @@ export class ToolRegistry {
    */
   register(tool: ToolDefinition): void {
     if (this.tools.has(tool.id)) {
-      console.warn(`[ToolRegistry] Tool ${tool.id} already registered, skipping`);
+      logger.warn(`[ToolRegistry] Tool ${tool.id} already registered, skipping`);
       return;
     }
     this.tools.set(tool.id, { ...tool, enabled: tool.enabled ?? true });

@@ -15,10 +15,12 @@ import {
 import { ExecutorDB, initExecutorDb, getExecutorDb } from './db.js';
 import { ToolRegistry } from './tool-registry.js';
 import { AgentRuntime } from './agent-runtime.js';
+import { Logger } from '../logging/index.js';
 
 // ============ ExecutorOrchestrator ============
 
 export class ExecutorOrchestrator extends EventEmitter {
+  private logger = new Logger();
   private db!: ExecutorDB;
   private tools!: ToolRegistry;
   private pollIntervalMs = 2000;
@@ -44,11 +46,11 @@ export class ExecutorOrchestrator extends EventEmitter {
 
     this.pollTimer = setInterval(() => {
       this.pollTasks().catch((err) => {
-        console.error('[ExecutorOrchestrator] poll error:', err);
+        this.logger.error('[ExecutorOrchestrator] poll error: ' + err.message);
       });
     }, this.pollIntervalMs);
 
-    console.log('[ExecutorOrchestrator] 已启动，轮询间隔 2s');
+    this.logger.info('[ExecutorOrchestrator] 已启动，轮询间隔 2s');
   }
 
   /**
@@ -60,7 +62,7 @@ export class ExecutorOrchestrator extends EventEmitter {
       clearInterval(this.pollTimer);
       this.pollTimer = null;
     }
-    console.log('[ExecutorOrchestrator] 已停止');
+    this.logger.info('[ExecutorOrchestrator] 已停止');
   }
 
   /**
@@ -162,7 +164,7 @@ export class ExecutorOrchestrator extends EventEmitter {
     const agent = this.db.getAgent(task.agentId);
 
     if (!agent) {
-      console.warn(`[ExecutorOrchestrator] Agent ${task.agentId} not found, skipping task ${task.id}`);
+      this.logger.warn(`[ExecutorOrchestrator] Agent ${task.agentId} not found, skipping task ${task.id}`);
       this.db.updateTask(task.id, { status: 'failed', error: `Agent ${task.agentId} not found` });
       return;
     }

@@ -17,11 +17,13 @@ import {
 } from './types.js';
 import * as readline from 'readline';
 import * as crypto from 'crypto';
+import { Logger } from '../logging/index.js';
 
 /**
  * ACP 服务器
  */
 export class ACPServer {
+  private logger = new Logger();
   private config: ACPServerConfig;
   private sessions: Map<string, any> = new Map();
   private tasks: Map<string, ACPTask> = new Map();
@@ -229,7 +231,7 @@ export class ACPServer {
       method,
       params
     };
-    console.log(JSON.stringify(notification));
+    this.logger.debug(`[ACP] Notification: ${JSON.stringify(notification)}`);
   }
 
   /**
@@ -248,16 +250,16 @@ export class ACPServer {
       try {
         const request: ACPRequest = JSON.parse(line);
         const response = await this.handleRequest(request);
-        console.log(JSON.stringify(response));
+        this.logger.debug(`[ACP] Response: ${JSON.stringify(response)}`);
       } catch (error) {
-        console.log(JSON.stringify({
+        this.logger.debug(`[ACP] Error response: ${JSON.stringify({
           jsonrpc: '2.0',
           id: null,
           error: {
             code: -32700,
             message: 'Parse error'
           }
-        }));
+        })}`);
       }
     });
 

@@ -1,5 +1,6 @@
 import type { TaskOrchestrator } from '../orchestrator/index.js';
 import type { WorkflowDefinition } from '../types.js';
+import { Logger } from '../logging/index.js';
 
 export interface CronJob {
   id: string;
@@ -11,6 +12,7 @@ export interface CronJob {
 }
 
 export class CronScheduler {
+  private logger = new Logger();
   private orchestrator: TaskOrchestrator;
   private jobs: Map<string, CronJob> = new Map();
   private intervals: Map<string, NodeJS.Timeout> = new Map();
@@ -81,7 +83,7 @@ export class CronScheduler {
     const job = this.jobs.get(jobId);
     if (!job || !job.enabled) return;
 
-    console.log(`[CronScheduler] Executing job ${jobId} - ${job.workflowId}`);
+    this.logger.debug(`[CronScheduler] Executing job ${jobId} - ${job.workflowId}`);
 
     try {
       // 创建任务并执行
@@ -94,7 +96,7 @@ export class CronScheduler {
       this.orchestrator.enqueue(task.id);
       job.lastRun = new Date();
     } catch (error) {
-      console.error(`[CronScheduler] Job ${jobId} failed:`, error);
+      this.logger.error(`[CronScheduler] Job ${jobId} failed: ${error instanceof Error ? error.message : error}`);
     }
 
     // 重新调度下一次执行

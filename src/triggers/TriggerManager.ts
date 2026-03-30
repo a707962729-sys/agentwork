@@ -2,12 +2,14 @@ import type { TaskOrchestrator } from '../orchestrator/index.js';
 import type { WorkflowDefinition } from '../types.js';
 import { CronScheduler, type CronJob } from './CronScheduler.js';
 import { WebhookReceiver, type WebhookConfig } from './WebhookReceiver.js';
+import { Logger } from '../logging/index.js';
 
 export interface TriggerManagerConfig {
   webhookPort?: number;
 }
 
 export class TriggerManager {
+  private logger = new Logger();
   private cronScheduler: CronScheduler;
   private webhookReceiver: WebhookReceiver;
 
@@ -29,7 +31,7 @@ export class TriggerManager {
    */
   async start(): Promise<void> {
     await this.webhookReceiver.start();
-    console.log('[TriggerManager] All triggers started');
+    this.logger.info('[TriggerManager] All triggers started');
   }
 
   /**
@@ -38,7 +40,7 @@ export class TriggerManager {
   async stop(): Promise<void> {
     this.cronScheduler.stopAll();
     await this.webhookReceiver.stop();
-    console.log('[TriggerManager] All triggers stopped');
+    this.logger.info('[TriggerManager] All triggers stopped');
   }
 
   /**
